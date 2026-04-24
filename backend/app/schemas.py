@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 
@@ -12,6 +12,7 @@ class WeatherCurrent(BaseModel):
     humidity: float
     pressure: float
     precipitation: float
+    visibility: Optional[float] = None
 
     class Config:
         from_attributes = True
@@ -25,6 +26,10 @@ class FlightStatusOut(BaseModel):
     wind_speed: float
     wind_gust: float
     precipitation: float
+    # Phase 2
+    risk_model_version: Optional[str] = None
+    breakdown: Optional[Dict[str, Any]] = None
+    confidence: Optional[float] = None
 
     class Config:
         from_attributes = True

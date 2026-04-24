@@ -5,6 +5,7 @@ import { ptBR } from "date-fns/locale";
 import { getFlightStatus, getWeather, FlightStatus, WeatherCurrent } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import MetricCard from "@/components/MetricCard";
+import RiskExplanationCard from "@/components/RiskExplanationCard";
 
 export default function Home() {
   const [status, setStatus] = useState<FlightStatus | null>(null);
@@ -165,6 +166,15 @@ export default function Home() {
                     unit="%"
                   />
                 </div>
+              )}
+              {/* Risk Explanation Card – Phase 2 */}
+              {status.breakdown && (
+                <RiskExplanationCard
+                  breakdown={status.breakdown}
+                  reasons={status.reasons}
+                  riskModelVersion={status.risk_model_version}
+                  confidence={status.confidence}
+                />
               )}
             </>
           )

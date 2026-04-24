@@ -25,14 +25,24 @@ def get_flight_status(db: Session = Depends(get_db)):
     if not status or not raw:
         raise HTTPException(status_code=404, detail="No status data available")
 
+    breakdown = status.risk_breakdown or {}
+    confidence = None
+    if breakdown:
+        P = breakdown.get("precipitation_component", 0)
+        V = breakdown.get("visibility_component", 0)
+        confidence = round(max(0.0, min(1.0, 1.0 - (P / 200.0) - (V / 300.0))), 2)
+
     return FlightStatusOut(
         timestamp=status.timestamp,
         status=status.status,
         risk_score=status.risk_score,
-        reasons=status.reasons,
+        reasons=status.reasons or [],
         wind_speed=raw.wind_speed,
         wind_gust=raw.wind_gust,
         precipitation=raw.precipitation,
+        risk_model_version=status.risk_model_version,
+        breakdown=breakdown or None,
+        confidence=confidence,
     )
 
 

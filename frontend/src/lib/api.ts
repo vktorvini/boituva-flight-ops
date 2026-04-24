@@ -23,6 +23,20 @@ export interface FlightStatus {
   wind_speed: number;
   wind_gust: number;
   precipitation: number;
+  // Phase 2
+  risk_model_version?: string;
+  breakdown?: {
+    wind_component: number;
+    gust_component: number;
+    precipitation_component: number;
+    visibility_component: number;
+    weighted_score: number;
+    weight_wind: number;
+    weight_gust: number;
+    weight_precipitation: number;
+    weight_visibility: number;
+  };
+  confidence?: number;
 }
 
 export interface WindowEntry {
