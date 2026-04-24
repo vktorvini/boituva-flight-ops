@@ -89,7 +89,7 @@ export default function Home() {
                   <div className="w-full max-w-sm space-y-3 mt-4">
                     <div className="flex justify-between text-xs font-bold tracking-widest uppercase text-zinc-500">
                       <span>Nível de Risco</span>
-                      <span className="text-white bg-zinc-800 px-2 py-0.5 rounded-md">{Math.round(status.risk_score * 100)}%</span>
+                      <span className="text-white bg-zinc-800 px-2 py-0.5 rounded-md">{Math.round(status.risk_score)}%</span>
                     </div>
                     <div className="h-3 bg-zinc-900 rounded-full overflow-hidden border border-white/5 shadow-inner p-px">
                       <div
@@ -100,7 +100,7 @@ export default function Home() {
                             ? "bg-gradient-to-r from-yellow-600 to-yellow-400"
                             : "bg-gradient-to-r from-red-600 to-rose-500"
                         }`}
-                        style={{ width: `${Math.round(status.risk_score * 100)}%` }}
+                        style={{ width: `${Math.round(status.risk_score)}%` }}
                       >
                          <div className="absolute inset-0 bg-white/20 w-full h-full animate-[pulse_2s_infinite]"></div>
                       </div>
