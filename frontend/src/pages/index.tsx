@@ -6,6 +6,7 @@ import { getFlightStatus, getWeather, FlightStatus, WeatherCurrent } from "@/lib
 import StatusBadge from "@/components/StatusBadge";
 import MetricCard from "@/components/MetricCard";
 import RiskExplanationCard from "@/components/RiskExplanationCard";
+import ConfidenceBadge from "@/components/ConfidenceBadge";
 
 export default function Home() {
   const [status, setStatus] = useState<FlightStatus | null>(null);
@@ -77,6 +78,13 @@ export default function Home() {
                 <div className="relative bg-zinc-950/60 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-8 md:p-14 flex flex-col items-center gap-10 shadow-2xl">
                   <StatusBadge status={status.status} size="lg" />
 
+                  {/* Phase 3: Confidence badge */}
+                  {status.confidence != null && (
+                    <ConfidenceBadge
+                      confidence={status.confidence}
+                      sourceCount={status.source_count ?? undefined}
+                    />
+                  )}
                   <div className="flex flex-col items-center gap-2 text-center">
                     {status.reasons.map((r, i) => (
                       <p key={i} className="text-zinc-300 font-medium text-lg">

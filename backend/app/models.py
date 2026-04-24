@@ -27,7 +27,10 @@ class WeatherNormalized(Base):
     wind_gust = Column(Float)
     precipitation = Column(Float)
     confidence_score = Column(Float)
-    visibility = Column(Float, nullable=True)  # km, Phase 2
+    visibility = Column(Float, nullable=True)   # km, Phase 2
+    # Phase 3
+    variance = Column(Float, nullable=True)      # variância entre fontes
+    source_count = Column(Integer, nullable=True)  # nº de fontes usadas
 
 
 class FlightStatus(Base):
@@ -39,7 +42,9 @@ class FlightStatus(Base):
     risk_score = Column(Float)
     reasons = Column(JSON)
     # Phase 2 fields
-    risk_model_version = Column(String, nullable=True)  # e.g. "v1.0"
-    risk_breakdown = Column(JSON, nullable=True)         # {W, G, P, V, weighted}
-    input_snapshot = Column(JSON, nullable=True)         # raw inputs used
-    decision_trace = Column(JSON, nullable=True)         # hard rules fired
+    risk_model_version = Column(String, nullable=True)
+    risk_breakdown = Column(JSON, nullable=True)
+    input_snapshot = Column(JSON, nullable=True)
+    decision_trace = Column(JSON, nullable=True)
+    # Phase 3
+    confidence = Column(Float, nullable=True)   # confidence_score do consenso

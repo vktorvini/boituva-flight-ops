@@ -21,6 +21,7 @@ interface ChartData {
   wind: number;
   gust: number;
   rain: number;
+  risk: number;    // Phase 3
   status: string;
 }
 
@@ -53,11 +54,12 @@ export default function GraficoPage() {
   useEffect(() => {
     getFlightWindow()
       .then((r) => {
-        const mapped: ChartData[] = r.data.window.slice(0, 24).map((e: WindowEntry) => ({
-          time: format(parseISO(e.hour), "dd/MM HH:mm", { locale: ptBR }),
+        const mapped: ChartData[] = r.data.window.slice(0, 24).map((e: WindowEntry, i: number) => ({
+          time: format(parseISO(e.hour), "HH:mm", { locale: ptBR }),
           wind: parseFloat(e.wind_speed.toFixed(1)),
           gust: parseFloat(e.wind_gust.toFixed(1)),
           rain: parseFloat(e.precipitation.toFixed(1)),
+          risk: e.status === "PROHIBITED" ? 80 : e.status === "WARNING" ? 45 : 15,
           status: e.status,
         }));
         setData(mapped);
@@ -104,6 +106,7 @@ export default function GraficoPage() {
               <ReferenceLine y={20} stroke="#ef4444" strokeDasharray="4 4" label={{ value: "20 🚫", fill: "#ef4444", fontSize: 10 }} />
               <Area type="monotone" dataKey="wind" name="Vento" stroke="#3b82f6" fill="url(#windGrad)" strokeWidth={2} />
               <Area type="monotone" dataKey="gust" name="Rajada" stroke="#8b5cf6" fill="url(#gustGrad)" strokeWidth={2} />
+              <Area type="monotone" dataKey="risk" name="Risco" stroke="#f97316" fill="none" strokeWidth={2} strokeDasharray="5 3" />
             </AreaChart>
           </ResponsiveContainer>
           <div className="flex gap-4 text-xs text-zinc-500">

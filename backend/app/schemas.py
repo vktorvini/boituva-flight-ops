@@ -30,6 +30,8 @@ class FlightStatusOut(BaseModel):
     risk_model_version: Optional[str] = None
     breakdown: Optional[Dict[str, Any]] = None
     confidence: Optional[float] = None
+    # Phase 3
+    source_count: Optional[int] = None
 
     class Config:
         from_attributes = True

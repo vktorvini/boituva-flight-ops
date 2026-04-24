@@ -60,7 +60,8 @@ def evaluate(
     wind_speed: float,
     wind_gust: float,
     precipitation: float,
-    visibility: float = 10.0,   # default: perfect visibility
+    visibility: float = 10.0,
+    variance: float = 0.0,    # Phase 3: fator de incerteza
 ) -> dict:
     """
     Core decision function – pure and versionable.
@@ -80,9 +81,14 @@ def evaluate(
     components = _normalize(wind_speed, wind_gust, precipitation, visibility)
     W, G, P, V = components["W"], components["G"], components["P"], components["V"]
 
-    # ── weighted score ────────────────────────────────────────────────────────
+    # ── weighted score ──────────────────────────────────────────────────
     raw_score = W * 0.4 + G * 0.3 + P * 0.2 + V * 0.1
-    risk_score = round(raw_score, 2)
+
+    # ── Phase 3: uncertainty factor ──────────────────────────────────────
+    # Alta variância entre as fontes impacta o risco final
+    uncertainty_factor = 1.0 + (variance / 50.0)
+    adjusted_score = raw_score * uncertainty_factor
+    risk_score = round(min(adjusted_score, 100.0), 2)
 
     # ── classify by score ─────────────────────────────────────────────────────
     status = _classify(risk_score)
@@ -128,8 +134,8 @@ def evaluate(
         if risk_score > 10:
             reasons.append(f"Monitoramento recomendado (risco {risk_score:.0f}/100)")
 
-    # ── confidence (proxy: based on visibility and precipitation) ─────────────
-    confidence = round(1.0 - (P / 200.0) - (V / 300.0), 2)
+    # ── confidence (proxy: based on precision and variance) ─────────────────
+    confidence = round(1.0 - (P / 200.0) - (V / 300.0) - (variance / 500.0), 2)
     confidence = max(0.0, min(1.0, confidence))
 
     return {
@@ -146,7 +152,8 @@ def evaluate(
             "weight_gust": 0.3,
             "weight_precipitation": 0.2,
             "weight_visibility": 0.1,
-            "weighted_score": risk_score,
+            "weighted_score": round(raw_score, 2),
+            "uncertainty_factor": round(uncertainty_factor, 4),  # Phase 3
         },
         "reasons": reasons,
         "input_snapshot": {
@@ -154,10 +161,11 @@ def evaluate(
             "wind_gust": wind_gust,
             "precipitation": precipitation,
             "visibility": visibility,
+            "variance": variance,             # Phase 3
         },
         "decision_trace": {
-            "score_before_hard_rules": round(raw_score, 2),
-            "classification_by_score": _classify(raw_score),
+            "score_before_hard_rules": round(adjusted_score, 2),
+            "classification_by_score": _classify(adjusted_score),
             "hard_rules_fired": hard_rules_fired,
             "final_status": status,
         },

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import WeatherRaw, FlightStatus
+from app.models import WeatherRaw, WeatherNormalized, FlightStatus
 from app.schemas import WeatherCurrent, FlightStatusOut, FlightWindowOut
 from app.agents.flight_window import get_flight_window
 
@@ -21,16 +21,16 @@ def get_current_weather(db: Session = Depends(get_db)):
 def get_flight_status(db: Session = Depends(get_db)):
     status = db.query(FlightStatus).order_by(FlightStatus.timestamp.desc()).first()
     raw = db.query(WeatherRaw).order_by(WeatherRaw.timestamp.desc()).first()
+    normalized = db.query(WeatherNormalized).order_by(WeatherNormalized.timestamp.desc()).first()
 
     if not status or not raw:
         raise HTTPException(status_code=404, detail="No status data available")
 
     breakdown = status.risk_breakdown or {}
-    confidence = None
-    if breakdown:
-        P = breakdown.get("precipitation_component", 0)
-        V = breakdown.get("visibility_component", 0)
-        confidence = round(max(0.0, min(1.0, 1.0 - (P / 200.0) - (V / 300.0))), 2)
+    # Phase 3: confidence vem direto do FlightStatus (gravado pela engine)
+    confidence = status.confidence
+    # source_count do normalized mais recente (Phase 3)
+    source_count = normalized.source_count if normalized else None
 
     return FlightStatusOut(
         timestamp=status.timestamp,
@@ -43,6 +43,7 @@ def get_flight_status(db: Session = Depends(get_db)):
         risk_model_version=status.risk_model_version,
         breakdown=breakdown or None,
         confidence=confidence,
+        source_count=source_count,
     )
 
 

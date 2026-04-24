@@ -37,6 +37,8 @@ export interface FlightStatus {
     weight_visibility: number;
   };
   confidence?: number;
+  // Phase 3
+  source_count?: number;
 }
 
 export interface WindowEntry {
