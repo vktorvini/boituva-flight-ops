@@ -2,7 +2,7 @@ import os
 import httpx
 from datetime import datetime, timezone
 
-from app.agents.decision_engine import evaluate
+from app.decision_engine.v1 import evaluate
 from app.schemas import FlightWindowEntry
 
 LAT = float(os.getenv("BOITUVA_LAT", "-23.2833"))
@@ -39,11 +39,15 @@ async def get_flight_window():
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
 
-        status, _, _ = evaluate(winds[i], gusts[i], rains[i])
+        result = evaluate(
+            wind_speed=winds[i],
+            wind_gust=gusts[i],
+            precipitation=rains[i],
+        )
         entries.append(
             FlightWindowEntry(
                 hour=t,
-                status=status,
+                status=result["status"],
                 wind_speed=winds[i],
                 wind_gust=gusts[i],
                 precipitation=rains[i],
