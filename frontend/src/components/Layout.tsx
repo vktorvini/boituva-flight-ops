@@ -5,6 +5,8 @@ import clsx from "clsx";
 const NAV = [
   { href: "/", label: "Status" },
   { href: "/janela", label: "Janela de Voo" },
+  { href: "/consensus", label: "🔀 Consenso" },
+  { href: "/mapa", label: "🗺️ Mapa" },
   { href: "/grafico", label: "Gráfico" },
   { href: "/historico", label: "Histórico" },
 ];

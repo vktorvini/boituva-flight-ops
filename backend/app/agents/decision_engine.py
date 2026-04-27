@@ -1,15 +1,40 @@
 """
-Decision Engine Agent – Phase 3
+Decision Engine Agent – Phase 4
 ================================
-Delega o cálculo para decision_engine/v1.py.
-Passa variance do normalized para o uncertainty factor.
-Persiste confidence no FlightStatus.
+Passa consensus (incluindo per_source_results) para compute_and_store_status.
+Serializa SourceResult → dict para persistência em JSON.
 """
+from dataclasses import asdict
 from app.models import WeatherNormalized, FlightStatus
 from app.decision_engine.v1 import evaluate
+from app.consensus_engine.engine import ConsensusResult
 
 
-def compute_and_store_status(db, normalized: WeatherNormalized) -> FlightStatus:
+def _serialize_sources(consensus: ConsensusResult | None) -> list | None:
+    """Serializa per_source_results do consensus para JSON-safe list."""
+    if consensus is None or not consensus.per_source_results:
+        return None
+    result = []
+    for sr in consensus.per_source_results:
+        result.append({
+            "source_name": sr.source_name,
+            "label": sr.label,
+            "available": sr.available,
+            "wind_speed": sr.wind_speed,
+            "wind_gust": sr.wind_gust,
+            "precipitation": sr.precipitation,
+            "visibility": sr.visibility,
+            "risk_score": sr.risk_score,
+            "status": sr.status,
+            "reasons": sr.reasons,
+            "weight": sr.weight,
+        })
+    return result
+
+
+def compute_and_store_status(
+    db, normalized: WeatherNormalized, consensus: ConsensusResult | None = None
+) -> FlightStatus:
     result = evaluate(
         wind_speed=normalized.wind_speed or 0.0,
         wind_gust=normalized.wind_gust or 0.0,
@@ -29,6 +54,8 @@ def compute_and_store_status(db, normalized: WeatherNormalized) -> FlightStatus:
         decision_trace=result["decision_trace"],
         # Phase 3
         confidence=result["confidence"],
+        # Phase 4
+        sources_detail=_serialize_sources(consensus),
     )
     db.add(record)
     db.commit()

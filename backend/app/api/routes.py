@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import WeatherRaw, WeatherNormalized, FlightStatus
-from app.schemas import WeatherCurrent, FlightStatusOut, FlightWindowOut
+from app.schemas import WeatherCurrent, FlightStatusOut, FlightWindowOut, SourceDetail
 from app.agents.flight_window import get_flight_window
 
 router = APIRouter()
@@ -27,10 +27,16 @@ def get_flight_status(db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No status data available")
 
     breakdown = status.risk_breakdown or {}
-    # Phase 3: confidence vem direto do FlightStatus (gravado pela engine)
     confidence = status.confidence
-    # source_count do normalized mais recente (Phase 3)
     source_count = normalized.source_count if normalized else None
+
+    # Phase 4: desserializar sources_detail
+    sources_detail = None
+    if status.sources_detail:
+        try:
+            sources_detail = [SourceDetail(**s) for s in status.sources_detail]
+        except Exception:
+            sources_detail = None
 
     return FlightStatusOut(
         timestamp=status.timestamp,
@@ -44,6 +50,7 @@ def get_flight_status(db: Session = Depends(get_db)):
         breakdown=breakdown or None,
         confidence=confidence,
         source_count=source_count,
+        sources_detail=sources_detail,
     )
 
 

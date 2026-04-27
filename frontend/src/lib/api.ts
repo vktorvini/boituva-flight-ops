@@ -15,6 +15,21 @@ export interface WeatherCurrent {
   precipitation: number;
 }
 
+// Phase 4: resultado individual por fonte
+export interface SourceDetail {
+  source_name: string;
+  label: string;
+  available: boolean;
+  wind_speed: number;
+  wind_gust: number;
+  precipitation: number;
+  visibility: number;
+  risk_score: number | null;
+  status: "SAFE" | "WARNING" | "PROHIBITED" | null;
+  reasons: string[];
+  weight: number;
+}
+
 export interface FlightStatus {
   timestamp: string;
   status: "SAFE" | "WARNING" | "PROHIBITED";
@@ -35,10 +50,13 @@ export interface FlightStatus {
     weight_gust: number;
     weight_precipitation: number;
     weight_visibility: number;
+    uncertainty_factor?: number;
   };
   confidence?: number;
   // Phase 3
   source_count?: number;
+  // Phase 4
+  sources_detail?: SourceDetail[];
 }
 
 export interface WindowEntry {

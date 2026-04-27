@@ -47,4 +47,6 @@ class FlightStatus(Base):
     input_snapshot = Column(JSON, nullable=True)
     decision_trace = Column(JSON, nullable=True)
     # Phase 3
-    confidence = Column(Float, nullable=True)   # confidence_score do consenso
+    confidence = Column(Float, nullable=True)    # confidence_score do consenso
+    # Phase 4 – resultado por fonte para explainability
+    sources_detail = Column(JSON, nullable=True)  # lista de SourceResult serializada

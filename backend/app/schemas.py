@@ -18,6 +18,21 @@ class WeatherCurrent(BaseModel):
         from_attributes = True
 
 
+class SourceDetail(BaseModel):
+    """Resultado individual por fonte para explainability."""
+    source_name: str
+    label: str
+    available: bool
+    wind_speed: float
+    wind_gust: float
+    precipitation: float
+    visibility: float
+    risk_score: Optional[float] = None
+    status: Optional[str] = None
+    reasons: List[str] = []
+    weight: float = 0.0
+
+
 class FlightStatusOut(BaseModel):
     timestamp: datetime
     status: str
@@ -32,6 +47,8 @@ class FlightStatusOut(BaseModel):
     confidence: Optional[float] = None
     # Phase 3
     source_count: Optional[int] = None
+    # Phase 4 – detalhes por fonte
+    sources_detail: Optional[List[SourceDetail]] = None
 
     class Config:
         from_attributes = True
