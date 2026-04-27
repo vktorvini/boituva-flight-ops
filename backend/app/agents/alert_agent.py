@@ -45,7 +45,7 @@ async def check_and_notify_status_change(db: Session, current_record: FlightStat
 def _format_message(curr: FlightStatus, prev: FlightStatus) -> str:
     emojis = {
         "SAFE": "✅ *VOO LIBERADO*",
-        "WARNING": "⚠️ *ATENÇÃO REQUERIDA*",
+        "WARNING": "⚠️ *VOO PROIBIDO (ATENÇÃO)*",
         "PROHIBITED": "🚫 *VOO FECHADO*"
     }
     

@@ -16,12 +16,12 @@ const STATUS_CONFIG = {
     emoji: "✅",
   },
   WARNING: {
-    label: "ATENÇÃO",
-    color: "text-yellow-400",
-    bg: "bg-yellow-500/10",
-    border: "border-yellow-500/30",
-    bar: "bg-gradient-to-r from-yellow-600 to-yellow-400",
-    dot: "bg-yellow-400",
+    label: "PROIBIDO (Atenção)",
+    color: "text-orange-500",
+    bg: "bg-orange-500/10",
+    border: "border-orange-500/30",
+    bar: "bg-gradient-to-r from-orange-600 to-orange-400",
+    dot: "bg-orange-400",
     emoji: "⚠️",
   },
   PROHIBITED: {
@@ -209,7 +209,7 @@ export default function ConsensusPage() {
                     {status.status === "SAFE"
                       ? "✅ SEGURO"
                       : status.status === "WARNING"
-                      ? "⚠️ ATENÇÃO"
+                      ? "⚠️ PROIBIDO (Atenção)"
                       : "🚫 PROIBIDO"}
                   </p>
                   <p className="text-xs text-zinc-500 mt-1">
