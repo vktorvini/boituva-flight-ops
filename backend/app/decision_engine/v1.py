@@ -34,7 +34,7 @@ SAFE_MAX = 30.0
 WARNING_MAX = 60.0
 
 # ── hard rule thresholds ─────────────────────────────────────────────────────
-RAIN_HARD_LIMIT = 2.0    # mm
+RAIN_HARD_LIMIT = 0.1    # mm (Qualquer garoa/chuva fecha a pista)
 GUST_HARD_LIMIT = 35.0   # km/h
 
 
