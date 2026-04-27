@@ -7,6 +7,7 @@ const NAV = [
   { href: "/janela", label: "Janela de Voo" },
   { href: "/consensus", label: "🔀 Consenso" },
   { href: "/mapa", label: "🗺️ Mapa" },
+  { href: "/alertas", label: "🤖 Alertas" },
   { href: "/grafico", label: "Gráfico" },
   { href: "/historico", label: "Histórico" },
 ];

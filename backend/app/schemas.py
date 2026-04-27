@@ -64,3 +64,31 @@ class FlightWindowEntry(BaseModel):
 
 class FlightWindowOut(BaseModel):
     window: List[FlightWindowEntry]
+
+
+class AlertHookCreate(BaseModel):
+    name: str
+    url: str
+    is_active: int = 1
+
+
+class AlertHookOut(BaseModel):
+    id: int
+    name: str
+    url: str
+    is_active: int
+
+    class Config:
+        from_attributes = True
+
+
+class AlertLogOut(BaseModel):
+    id: int
+    timestamp: datetime
+    old_status: str
+    new_status: str
+    message_sent: str
+    success: int
+
+    class Config:
+        from_attributes = True

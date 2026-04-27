@@ -82,3 +82,62 @@ def get_history(limit: int = 48, db: Session = Depends(get_db)):
 @router.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# ── Alertas & Webhooks ────────────────────────────────────────────────────────
+from app.models import AlertHook, AlertLog
+from app.schemas import AlertHookCreate, AlertHookOut, AlertLogOut
+
+@router.get("/alertas/logs", response_model=list[AlertLogOut])
+def get_alert_logs(limit: int = 20, db: Session = Depends(get_db)):
+    logs = db.query(AlertLog).order_by(AlertLog.timestamp.desc()).limit(limit).all()
+    return logs
+
+@router.get("/alertas/hooks", response_model=list[AlertHookOut])
+def get_alert_hooks(db: Session = Depends(get_db)):
+    hooks = db.query(AlertHook).all()
+    return hooks
+
+@router.post("/alertas/hooks", response_model=AlertHookOut)
+def create_alert_hook(hook: AlertHookCreate, db: Session = Depends(get_db)):
+    new_hook = AlertHook(**hook.model_dump())
+    db.add(new_hook)
+    db.commit()
+    db.refresh(new_hook)
+    return new_hook
+
+@router.delete("/alertas/hooks/{hook_id}")
+def delete_alert_hook(hook_id: int, db: Session = Depends(get_db)):
+    hook = db.query(AlertHook).filter(AlertHook.id == hook_id).first()
+    if not hook:
+        raise HTTPException(status_code=404, detail="Hook not found")
+    db.delete(hook)
+    db.commit()
+    return {"status": "deleted"}
+
+@router.post("/alertas/test")
+async def trigger_bot_test(db: Session = Depends(get_db)):
+    """Rota para o Botão da App: Engatilha um alerta manual."""
+    from app.agents.alert_agent import check_and_notify_status_change
+    last_record = db.query(FlightStatus).order_by(FlightStatus.timestamp.desc()).first()
+    if not last_record:
+        raise HTTPException(status_code=400, detail="Sem historico para simular.")
+    
+    new_status = "WARNING" if last_record.status == "SAFE" else "SAFE"
+    fake_record = FlightStatus(
+        timestamp=last_record.timestamp,
+        status=new_status,
+        risk_score=99.0 if new_status != "SAFE" else 5.0,
+        reasons=[f"Teste forçado via App: {last_record.status} para {new_status}"],
+        confidence=1.0,
+        sources_detail=[]
+    )
+    db.add(fake_record)
+    db.commit()
+    db.refresh(fake_record)
+    
+    await check_and_notify_status_change(db, fake_record)
+    
+    db.delete(fake_record)
+    db.commit()
+    return {"status": "Teste engatilhado com sucesso!"}

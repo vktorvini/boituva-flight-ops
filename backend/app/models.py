@@ -50,3 +50,26 @@ class FlightStatus(Base):
     confidence = Column(Float, nullable=True)    # confidence_score do consenso
     # Phase 4 – resultado por fonte para explainability
     sources_detail = Column(JSON, nullable=True)  # lista de SourceResult serializada
+
+
+class AlertHook(Base):
+    """Destinos de notificação cadastrados pelos usuários (Webhooks)."""
+    __tablename__ = "alert_hooks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)           # Ex: "Discord Grupo Boituva"
+    url = Column(String)            # Endpoint POST
+    is_active = Column(Integer, default=1)  # 1=ativo, 0=inativo
+
+
+class AlertLog(Base):
+    """Feed histórico de notificações enviadas pelo bot."""
+    __tablename__ = "alert_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    old_status = Column(String)
+    new_status = Column(String)
+    message_sent = Column(String)
+    # 1 se pelo menos um webhook respondeu ok, senão 0
+    success = Column(Integer, default=1)

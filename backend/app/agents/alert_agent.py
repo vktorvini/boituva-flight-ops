@@ -11,10 +11,11 @@ import os
 import httpx
 import logging
 from sqlalchemy.orm import Session
-from app.models import FlightStatus
+from app.models import FlightStatus, AlertHook, AlertLog
 
 logger = logging.getLogger(__name__)
 
+# Mantém suporte a .env legacy
 WEBHOOK_URL = os.getenv("ALERT_WEBHOOK_URL", "")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
@@ -25,13 +26,7 @@ async def check_and_notify_status_change(db: Session, current_record: FlightStat
     Compara o status atual com a leitura imediatamente anterior.
     Se o status operacional mudou, dispara alertas.
     """
-    # Buscar os últimos dois registros ordenados pelo timestamp
-    records = (
-        db.query(FlightStatus)
-        .order_by(FlightStatus.timestamp.desc())
-        .limit(2)
-        .all()
-    )
+    records = db.query(FlightStatus).order_by(FlightStatus.timestamp.desc()).limit(2).all()
 
     if len(records) < 2:
         logger.info("[AlertAgent] Sem histórico suficiente para comparar.")
@@ -42,7 +37,7 @@ async def check_and_notify_status_change(db: Session, current_record: FlightStat
 
     if curr.status != prev.status:
         logger.info(f"[AlertAgent] Mudança de estado detectada: {prev.status} -> {curr.status}")
-        await _dispatch_alert(curr, prev)
+        await _dispatch_alert(db, curr, prev)
     else:
         logger.debug(f"[AlertAgent] Status mantido: {curr.status}. Sem disparo de alerta.")
 
@@ -57,7 +52,7 @@ def _format_message(curr: FlightStatus, prev: FlightStatus) -> str:
     title = emojis.get(curr.status, "ℹ️ *ATUALIZAÇÃO*")
     
     msg = f"Boituva Flight Ops\n{title}\n\n"
-    msg += f"O status operacional alterou de {prev.status} para {curr.status}.\n"
+    msg += f"O status alterou de {prev.status} para {curr.status}.\n"
     msg += f"Risco atual: {int(curr.risk_score)}/100\n\n"
     
     msg += "*Motivos:*\n"
@@ -68,10 +63,10 @@ def _format_message(curr: FlightStatus, prev: FlightStatus) -> str:
     return msg
 
 
-async def _dispatch_alert(curr: FlightStatus, prev: FlightStatus):
+async def _dispatch_alert(db: Session, curr: FlightStatus, prev: FlightStatus):
     message = _format_message(curr, prev)
     
-    # 1. Log console (Removido emojis para evitar erro de encoding no Windows)
+    # 1. Log console
     print("\n" + "="*50)
     print("[ALERTA] NOVO ALERTA DISPARADO:")
     try:
@@ -80,16 +75,31 @@ async def _dispatch_alert(curr: FlightStatus, prev: FlightStatus):
         print(message.encode("cp1252", errors="replace").decode("cp1252"))
     print("="*50 + "\n")
 
-    # 2. Webhook (Para WhatsApp API via Z-API, Evolution, etc)
+    success_count = 0
+
+    # 2. Hooks Cadastrados no Banco (Novo Flow!)
+    hooks = db.query(AlertHook).filter(AlertHook.is_active == 1).all()
+    async with httpx.AsyncClient() as cl:
+        for hook in hooks:
+            try:
+                resp = await cl.post(hook.url, json={"text": message, "status": curr.status}, timeout=10)
+                if resp.status_code in [200, 201, 204]:
+                    success_count += 1
+                logger.info(f"[AlertAgent] Disparo via DB Hook ({hook.name}): HTTP {resp.status_code}")
+            except Exception as e:
+                logger.error(f"[AlertAgent] Falha DB Hook ({hook.name}): {e}")
+
+    # 3. Webhook Legacy (.env)
     if WEBHOOK_URL:
         try:
             async with httpx.AsyncClient() as cl:
                 resp = await cl.post(WEBHOOK_URL, json={"text": message, "status": curr.status}, timeout=10)
-                logger.info(f"[AlertAgent] Webhook enviado: HTTP {resp.status_code}")
+                logger.info(f"[AlertAgent] Env Webhook: HTTP {resp.status_code}")
+                success_count += 1
         except Exception as e:
-            logger.error(f"[AlertAgent] Erro no webhook: {e}")
+            logger.error(f"[AlertAgent] Erro no Env webhook: {e}")
 
-    # 3. Telegram (Grátis e imediato para MVP)
+    # 4. Telegram (.env)
     if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
         tg_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         try:
@@ -99,6 +109,17 @@ async def _dispatch_alert(curr: FlightStatus, prev: FlightStatus):
                     "text": message,
                     "parse_mode": "Markdown"
                 }, timeout=10)
-                logger.info(f"[AlertAgent] Telegram enviado: HTTP {resp.status_code}")
+                logger.info(f"[AlertAgent] Telegram: HTTP {resp.status_code}")
+                success_count += 1
         except Exception as e:
-            logger.error(f"[AlertAgent] Erro no Telegram: {e}")
+            logger.error(f"[AlertAgent] Erro Telegram: {e}")
+
+    # 5. Salva no DB o Log para visualização na Tela Interna
+    log_entry = AlertLog(
+        old_status=prev.status,
+        new_status=curr.status,
+        message_sent=message,
+        success=1 if success_count > 0 else 0
+    )
+    db.add(log_entry)
+    db.commit()

@@ -83,3 +83,28 @@ export const getFlightStatus = () => API.get<FlightStatus>("/voo/status");
 export const getFlightWindow = () => API.get<FlightWindow>("/voo/janela");
 export const getHistory = (limit = 48) =>
   API.get<HistoryEntry[]>(`/voo/historico?limit=${limit}`);
+
+// ── Bot Alertas & Webhooks ───────────────────────────────────────────────────
+
+export interface AlertLog {
+  id: number;
+  timestamp: string;
+  old_status: string;
+  new_status: string;
+  message_sent: string;
+  success: number;
+}
+
+export interface AlertHook {
+  id: number;
+  name: string;
+  url: string;
+  is_active: number;
+}
+
+export const getAlertLogs = () => API.get<AlertLog[]>("/alertas/logs");
+export const getAlertHooks = () => API.get<AlertHook[]>("/alertas/hooks");
+export const createAlertHook = (data: { name: string; url: string }) =>
+  API.post<AlertHook>("/alertas/hooks", data);
+export const deleteAlertHook = (id: number) => API.delete(`/alertas/hooks/${id}`);
+export const triggerBotTest = () => API.post("/alertas/test");
