@@ -59,7 +59,7 @@ function SourceCard({ source }: { source: SourceDetail }) {
               }`}
             />
             <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">
-              {source.source_name === "inmet" ? "INMET" : "Open-Meteo"}
+              {source.source_name === "inmet" ? "INMET" : source.source_name === "met_norway" ? "MET NORWAY" : "OPEN-METEO"}
             </span>
           </div>
           <p className="text-xs text-zinc-500">{source.label}</p>
@@ -256,17 +256,23 @@ export default function ConsensusPage() {
               <p className="text-[10px] uppercase tracking-widest text-zinc-600 font-bold">
                 Fontes de Dados
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-zinc-500">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-zinc-500">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-violet-400" />
                   <span>
-                    <strong className="text-zinc-300">INMET – A713/Ipero:</strong> Estação automática oficial, ~17km de Boituva. Peso 50%.
+                    <strong className="text-zinc-300">INMET:</strong> Estação A713, ~17km. Peso 50%.
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span>
+                    <strong className="text-zinc-300">Met Norway:</strong> Inst. Norueguês (Fallback). Peso 40%.
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-blue-400" />
                   <span>
-                    <strong className="text-zinc-300">Open-Meteo:</strong> Modelo global NWP, lat/lon exato de Boituva. Peso 30%.
+                    <strong className="text-zinc-300">Open-Meteo:</strong> Modelo global NWP. Peso 30%.
                   </span>
                 </div>
               </div>
