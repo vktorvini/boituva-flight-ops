@@ -24,11 +24,13 @@ from typing import List, Optional
 # ── Pesos por fonte ────────────────────────────────────────────────────────────
 SOURCE_WEIGHTS: dict[str, float] = {
     "inmet": 0.5,
+    "met_norway": 0.4, # Fallback primário se INMET estiver offline
     "open_meteo": 0.3,
 }
 
 SOURCE_LABELS: dict[str, str] = {
     "inmet": "INMET – Estação A713 (Ipero/SP, ~17km)",
+    "met_norway": "Met Norway (Instituto Norueguês global)",
     "open_meteo": "Open-Meteo (modelo global – Boituva)",
 }
 

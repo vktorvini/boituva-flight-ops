@@ -201,14 +201,60 @@ def _safe_float(value) -> float | None:
         return None
 
 
+async def _fetch_met_norway() -> WeatherSourceData:
+    """
+    Busca dados secundários do MET Norway (yr.no)
+    Não exige chave de API, mas exige User-Agent amigável.
+    """
+    url = f"https://api.met.no/weatherapi/locationforecast/2.0/compact?lat={LAT}&lon={LON}"
+    headers = {"User-Agent": "BoituvaFlightOps/5.0 github.com/vktorvini"}
+    try:
+        async with httpx.AsyncClient(timeout=10) as cl:
+            resp = await cl.get(url, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+            
+            # Navegar na estrutura do Met Norway
+            current = data["properties"]["timeseries"][0]["data"]["instant"]["details"]
+            
+            # Em km/h (Met Norway retorna em m/s)
+            wind_speed = float(current.get("wind_speed", 0)) * 3.6
+            wind_gust = float(current.get("wind_speed_of_gust", current.get("wind_speed", 0))) * 3.6
+            
+            # Precipitação (vem da próxima 1h)
+            try:
+                next_1h = data["properties"]["timeseries"][0]["data"]["next_1_hours"]["details"]
+                precipitation = float(next_1h.get("precipitation_amount", 0.0))
+            except (KeyError, IndexError):
+                precipitation = 0.0
+
+            logger.info(f"[MetNorway] wind={wind_speed:.1f} gust={wind_gust:.1f} rain={precipitation}")
+            
+            return WeatherSourceData(
+                source_name="met_norway",
+                wind_speed=round(wind_speed, 2),
+                wind_gust=round(wind_gust, 2),
+                precipitation=round(precipitation, 2),
+                visibility=10.0,
+                available=True,
+            )
+    except Exception as e:
+        logger.warning(f"[MetNorway] Erro na coleta: {e}")
+        return WeatherSourceData(
+            source_name="met_norway",
+            wind_speed=0, wind_gust=0, precipitation=0, available=False,
+        )
+
+
 async def fetch_and_store_weather():
     """Pipeline principal de ingestão."""
     async with httpx.AsyncClient(timeout=15) as client:
         om = await _fetch_open_meteo(client)
 
     inmet = await _fetch_inmet()
+    met_norway = await _fetch_met_norway()
 
-    sources = [om, inmet]
+    sources = [om, inmet, met_norway]
     consensus = run_consensus(sources)
 
     logger.info(
@@ -251,7 +297,13 @@ async def fetch_and_store_weather():
         db.refresh(raw)
 
         normalized = normalize_and_store(db, raw, consensus)
-        compute_and_store_status(db, normalized, consensus)
+        
+        # Agente 3 processa a decisão
+        new_status_record = compute_and_store_status(db, normalized, consensus)
+        
+        # Agente 7 (Alert Agent) checa a mudança e notifica
+        from app.agents.alert_agent import check_and_notify_status_change
+        await check_and_notify_status_change(db, new_status_record)
 
     finally:
         db.close()
