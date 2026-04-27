@@ -82,7 +82,7 @@ async def _dispatch_alert(db: Session, curr: FlightStatus, prev: FlightStatus):
     async with httpx.AsyncClient() as cl:
         for hook in hooks:
             try:
-                resp = await cl.post(hook.url, json={"text": message, "status": curr.status}, timeout=10)
+                resp = await cl.post(hook.url, json={"content": message, "text": message, "status": curr.status}, timeout=10)
                 if resp.status_code in [200, 201, 204]:
                     success_count += 1
                 logger.info(f"[AlertAgent] Disparo via DB Hook ({hook.name}): HTTP {resp.status_code}")
