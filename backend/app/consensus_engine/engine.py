@@ -76,11 +76,15 @@ class ConsensusResult:
     per_source_results: List[SourceResult] = field(default_factory=list)
 
 
-def _weighted_average(values: list[tuple[float, float]]) -> float:
-    total_weight = sum(w for _, w in values)
-    if total_weight == 0:
+def _worst_case_max(values: list[float]) -> float:
+    if not values:
         return 0.0
-    return sum(v * w for v, w in values) / total_weight
+    return max(values)
+
+def _worst_case_min(values: list[float]) -> float:
+    if not values:
+        return 10.0
+    return min(values)
 
 
 def _variance_across(values: list[float]) -> float:
@@ -176,11 +180,12 @@ def run_consensus(sources: List[WeatherSourceData]) -> ConsensusResult:
     total = sum(raw_weights)
     norm_weights = [w / total for w in raw_weights]
 
-    # Passo 4: Médias ponderadas
-    wind_speed = _weighted_average([(s.wind_speed, w) for s, w in zip(available, norm_weights)])
-    wind_gust = _weighted_average([(s.wind_gust, w) for s, w in zip(available, norm_weights)])
-    precipitation = _weighted_average([(s.precipitation, w) for s, w in zip(available, norm_weights)])
-    visibility = _weighted_average([(s.visibility, w) for s, w in zip(available, norm_weights)])
+    # Passo 4: Abordagem Restritiva (Pior Cenário / Worst-Case)
+    # Em vez de média, assumimos o risco máximo apontado por qualquer fonte
+    wind_speed = _worst_case_max([s.wind_speed for s in available])
+    wind_gust = _worst_case_max([s.wind_gust for s in available])
+    precipitation = _worst_case_max([s.precipitation for s in available])
+    visibility = _worst_case_min([s.visibility for s in available])
 
     # Passo 5: Variância (proxy de discordância entre fontes)
     wind_values = [s.wind_speed for s in available]

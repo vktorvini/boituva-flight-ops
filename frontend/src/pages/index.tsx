@@ -114,6 +114,30 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Fontes Individuais (Evitar Média) */}
+                  {status.sources_detail && status.sources_detail.length > 0 && (
+                    <div className="w-full flex flex-col items-center mt-2 pt-6 border-t border-white/5">
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-3">Vento reportado pelas fontes ativas</p>
+                      <div className="flex flex-wrap justify-center gap-3">
+                        {status.sources_detail.filter(s => s.available).map(s => {
+                          const name = s.source_name === "open_meteo" ? "Open-Meteo" : s.source_name === "inmet" ? "INMET" : "Norway";
+                          const isRed = s.wind_speed > 22;
+                          const isYellow = s.wind_speed > 12 && !isRed;
+                          return (
+                            <div key={s.source_name} className="bg-zinc-900/80 border border-white/5 rounded-lg px-4 py-2 flex flex-col items-center shadow-lg">
+                              <span className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">
+                                {name}
+                              </span>
+                              <span className={`text-sm font-black ${isRed ? 'text-red-400' : isYellow ? 'text-yellow-400' : 'text-emerald-400'}`}>
+                                {s.wind_speed.toFixed(1)} km/h
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -121,21 +145,21 @@ export default function Home() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-4">
                 <MetricCard
                   icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/></svg>}
-                  label="Vento"
+                  label="Vento (Pior Cenário)"
                   value={status.wind_speed.toFixed(1)}
                   unit="km/h"
-                  sub={status.wind_speed > 20 ? "⛔ Limite excedido" : status.wind_speed > 15 ? "⚠️ Elevado" : "Operação Padrão"}
+                  sub={status.wind_speed > 22 ? "⛔ Limite excedido" : status.wind_speed > 12 ? "⚠️ Elevado" : "Operação Padrão"}
                 />
                 <MetricCard
                   icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8a2.5 2.5 0 1 1 2 4H2"/></svg>}
-                  label="Rajada"
+                  label="Rajada (Pior Cenário)"
                   value={status.wind_gust.toFixed(1)}
                   unit="km/h"
-                  sub={status.wind_gust > 25 ? "⛔ Limite excedido" : status.wind_gust > 20 ? "⚠️ Elevado" : "Estável"}
+                  sub={status.wind_gust > 30 ? "⛔ Limite excedido" : status.wind_gust > 15 ? "⚠️ Elevada" : "Estável"}
                 />
                 <MetricCard
                   icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg>}
-                  label="Chuva"
+                  label="Chuva (Pior Cenário)"
                   value={status.precipitation.toFixed(1)}
                   unit="mm"
                   sub={status.precipitation > 0 ? "⛔ Voo proibido" : "Tempo Seco"}
