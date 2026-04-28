@@ -4,7 +4,7 @@ type Status = "SAFE" | "WARNING" | "PROHIBITED";
 
 const CONFIG = {
   SAFE: {
-    label: "OPERAÇÃO NORMAL",
+    label: "BANDEIRA VERDE | VOOS LIBERADOS",
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-green-400" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>,
     bg: "bg-green-500/10",
     border: "border-green-500/30",
@@ -13,16 +13,16 @@ const CONFIG = {
     dot: "bg-green-400",
   },
   WARNING: {
-    label: "AFASTAMENTO / PROIBIDO",
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-orange-500" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>,
-    bg: "bg-orange-500/10",
-    border: "border-orange-500/30",
-    text: "text-orange-500",
-    glow: "shadow-[0_0_40px_rgba(249,115,22,0.3)]",
-    dot: "bg-orange-500",
+    label: "BANDEIRA AMARELA | OBSERVAÇÃO (30 MIN)",
+    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-yellow-500" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>,
+    bg: "bg-yellow-500/10",
+    border: "border-yellow-500/30",
+    text: "text-yellow-500",
+    glow: "shadow-[0_0_40px_rgba(234,179,8,0.3)]",
+    dot: "bg-yellow-500",
   },
   PROHIBITED: {
-    label: "AFASTAMENTO / PROIBIDO",
+    label: "BANDEIRA VERMELHA | VOOS CANCELADOS",
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-red-400" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>,
     bg: "bg-red-500/10",
     border: "border-red-500/30",

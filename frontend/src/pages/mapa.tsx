@@ -30,8 +30,8 @@ function generateHeatPoints(
       const dist = Math.sqrt((i / steps) ** 2 + (j / steps) ** 2);
       if (dist > 1.0) continue;
 
-      // Intensidade cai com distância e escala com risco
-      const baseIntensity = riskScore / 100;
+      // Base intensity fixa dependendo do status para colorir bem o mapa
+      const baseIntensity = status === "SAFE" ? 0.6 : status === "WARNING" ? 0.8 : 1.0;
       const falloff = Math.max(0, 1.0 - dist * 0.85);
       // Adicionar variação aleatória suave para aspecto orgânico
       const jitter = 0.9 + Math.random() * 0.2;
@@ -177,9 +177,9 @@ export default function MapaPage() {
 
   const statusConfig = status
     ? {
-        SAFE: { label: "SEGURO", color: "#34d399", emoji: "✅" },
-        WARNING: { label: "ATENÇÃO", color: "#fbbf24", emoji: "⚠️" },
-        PROHIBITED: { label: "PROIBIDO", color: "#f87171", emoji: "🚫" },
+        SAFE: { label: "VOO LIBERADO", color: "#34d399", emoji: "✅", flag: "Bandeira Verde", textClass: "text-green-500" },
+        WARNING: { label: "OBSERVAÇÃO", color: "#fbbf24", emoji: "⚠️", flag: "Bandeira Amarela", textClass: "text-yellow-500" },
+        PROHIBITED: { label: "VOO CANCELADO", color: "#f87171", emoji: "🚫", flag: "Bandeira Vermelha", textClass: "text-red-500" },
       }[status.status]
     : null;
 
@@ -258,39 +258,59 @@ export default function MapaPage() {
               </div>
             </div>
           )}
+
+          {/* Marca d'água */}
+          {status && statusConfig && mapReady && (
+            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-[400] opacity-30 drop-shadow-[0_0_15px_rgba(0,0,0,0.8)]">
+               <span className={`text-6xl md:text-8xl font-black uppercase text-center transform -rotate-12 leading-none ${statusConfig.textClass}`}>
+                 {statusConfig.flag}
+                 <span className="block text-4xl md:text-6xl mt-2">{statusConfig.label}</span>
+               </span>
+            </div>
+          )}
         </div>
 
-        {/* Legenda */}
-        <div className="bg-zinc-950/40 border border-white/5 rounded-xl p-4 space-y-3">
+        {/* Legenda Clara */}
+        <div className="bg-zinc-950/40 border border-white/5 rounded-xl p-4 space-y-4">
           <p className="text-[10px] uppercase tracking-widest text-zinc-600 font-bold">
-            Legenda
+            Guia de Cores e Status Oficial
           </p>
-          <div className="flex flex-wrap gap-6">
-            {[
-              { label: "Seguro (0–30)", gradient: "from-emerald-900 via-emerald-500 to-emerald-300" },
-              { label: "Atenção (31–60)", gradient: "from-amber-900 via-amber-500 to-yellow-300" },
-              { label: "Proibido (61–100)", gradient: "from-red-950 via-red-600 to-red-300" },
-            ].map((l) => (
-              <div key={l.label} className="flex items-center gap-2">
-                <div
-                  className={`w-12 h-3 rounded-full bg-gradient-to-r ${l.gradient}`}
-                />
-                <span className="text-xs text-zinc-400">{l.label}</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-1 p-3 rounded-lg bg-green-500/5 border border-green-500/10">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-3 rounded bg-gradient-to-r from-green-700 to-green-400" />
+                <span className="text-sm font-black text-green-400">VERDE (Liberado)</span>
               </div>
-            ))}
+              <span className="text-xs text-zinc-400">Condições perfeitas: céu limpo, ventos fracos e visibilidade alta.</span>
+            </div>
+            
+            <div className="flex flex-col gap-1 p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/10">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-3 rounded bg-gradient-to-r from-yellow-700 to-yellow-400" />
+                <span className="text-sm font-black text-yellow-500">AMARELA (Observação)</span>
+              </div>
+              <span className="text-xs text-zinc-400">Ventos em atenção ou ameaça leve de chuva. Aguardar 30 min.</span>
+            </div>
+
+            <div className="flex flex-col gap-1 p-3 rounded-lg bg-red-500/5 border border-red-500/10">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-3 rounded bg-gradient-to-r from-red-700 to-red-400" />
+                <span className="text-sm font-black text-red-500">VERMELHA (Cancelado)</span>
+              </div>
+              <span className="text-xs text-zinc-400">Risco operacional. Ventos fortes acima de 22km/h ou chuva detectada.</span>
+            </div>
+          </div>
+          
+          <div className="flex gap-6 pt-3 mt-3 border-t border-white/5">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white" />
-              <span className="text-xs text-zinc-400">Aeródromo SDBV</span>
+              <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-[0_0_10px_#3b82f6]" />
+              <span className="text-xs text-zinc-400">Aeródromo de Boituva (SDBV)</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-violet-500 border border-white" />
-              <span className="text-xs text-zinc-400">Centro de Boituva</span>
+              <span className="text-xs text-zinc-400">Centro da Cidade</span>
             </div>
           </div>
-          <p className="text-[10px] text-zinc-600">
-            A intensidade do calor é baseada no risk_score atual ({status ? Math.round(status.risk_score) : "–"}/100)
-            e diminui radialmente a partir do aeródromo no raio de ~20 km.
-          </p>
         </div>
       </div>
     </>

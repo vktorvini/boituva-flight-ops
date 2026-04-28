@@ -9,17 +9,40 @@ from app.agents.flight_window import get_flight_window
 router = APIRouter()
 
 
+from datetime import datetime, timezone
+
 @router.get("/clima/atual", response_model=WeatherCurrent)
-def get_current_weather(db: Session = Depends(get_db)):
+async def get_current_weather(db: Session = Depends(get_db)):
     record = db.query(WeatherRaw).order_by(WeatherRaw.timestamp.desc()).first()
+    
+    # Se não tiver dados ou o dado for muito velho (> 10 min), força ingestão imediata
+    if not record or (datetime.utcnow() - record.timestamp).total_seconds() > 600:
+        from app.agents.weather_ingestion import fetch_and_store_weather
+        try:
+            await fetch_and_store_weather()
+            # Busca de novo após atualizar
+            record = db.query(WeatherRaw).order_by(WeatherRaw.timestamp.desc()).first()
+        except Exception:
+            pass # fallback silencioso em caso de erro na forçada
+
     if not record:
         raise HTTPException(status_code=404, detail="No weather data available")
     return record
 
 
 @router.get("/voo/status", response_model=FlightStatusOut)
-def get_flight_status(db: Session = Depends(get_db)):
+async def get_flight_status(db: Session = Depends(get_db)):
     status = db.query(FlightStatus).order_by(FlightStatus.timestamp.desc()).first()
+    
+    # Se não tiver status ou o dado for muito velho (> 10 min), força ingestão imediata
+    if not status or (datetime.utcnow() - status.timestamp).total_seconds() > 600:
+        from app.agents.weather_ingestion import fetch_and_store_weather
+        try:
+            await fetch_and_store_weather()
+            status = db.query(FlightStatus).order_by(FlightStatus.timestamp.desc()).first()
+        except Exception:
+            pass
+
     raw = db.query(WeatherRaw).order_by(WeatherRaw.timestamp.desc()).first()
     normalized = db.query(WeatherNormalized).order_by(WeatherNormalized.timestamp.desc()).first()
 

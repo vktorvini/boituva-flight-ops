@@ -30,12 +30,13 @@ from __future__ import annotations
 RISK_MODEL_VERSION = "v1.0"
 
 # ── classification thresholds ────────────────────────────────────────────────
-SAFE_MAX = 30.0
-WARNING_MAX = 60.0
+SAFE_MAX = 20.0          # Mais restritivo (era 30.0)
+WARNING_MAX = 50.0       # Mais restritivo (era 60.0)
 
 # ── hard rule thresholds ─────────────────────────────────────────────────────
-RAIN_HARD_LIMIT = 0.1    # mm (Qualquer garoa/chuva fecha a pista)
-GUST_HARD_LIMIT = 35.0   # km/h
+RAIN_HARD_LIMIT = 0.1    # mm (Qualquer garoa/chuva > 0.1 fecha a pista)
+GUST_HARD_LIMIT = 30.0   # km/h (Mais restritivo, era 35.0)
+WIND_HARD_LIMIT = 22.0   # km/h (Novo limite para fechar pista)
 
 
 def _normalize(wind_speed: float, wind_gust: float,
@@ -95,12 +96,29 @@ def evaluate(
 
     # ── hard rules ────────────────────────────────────────────────────────────
     hard_rules_fired: list[str] = []
+    
+    # Hard rules para PROHIBITED
     if precipitation > RAIN_HARD_LIMIT:
         status = "PROHIBITED"
         hard_rules_fired.append(f"hard_rule:precipitation>{RAIN_HARD_LIMIT}mm ({precipitation:.1f} mm)")
     if wind_gust > GUST_HARD_LIMIT:
         status = "PROHIBITED"
         hard_rules_fired.append(f"hard_rule:wind_gust>{GUST_HARD_LIMIT}km/h ({wind_gust:.1f} km/h)")
+    if wind_speed > WIND_HARD_LIMIT:
+        status = "PROHIBITED"
+        hard_rules_fired.append(f"hard_rule:wind_speed>{WIND_HARD_LIMIT}km/h ({wind_speed:.1f} km/h)")
+
+    # Hard rules para WARNING (Se o modelo classificou como SAFE mas não está "perfeito")
+    if status == "SAFE":
+        if precipitation > 0:
+            status = "WARNING"
+            hard_rules_fired.append(f"hard_rule:precipitation>0mm ({precipitation:.1f} mm)")
+        elif wind_speed > 12.0:
+            status = "WARNING"
+            hard_rules_fired.append(f"hard_rule:wind_speed>12.0km/h ({wind_speed:.1f} km/h)")
+        elif wind_gust > 15.0:
+            status = "WARNING"
+            hard_rules_fired.append(f"hard_rule:wind_gust>15.0km/h ({wind_gust:.1f} km/h)")
 
     # ── reasons (human-readable) ─────────────────────────────────────────────
     reasons: list[str] = []
@@ -114,25 +132,29 @@ def evaluate(
             reasons.append(f"Rajada acima do limite crítico: {wind_gust:.1f} km/h")
         elif wind_gust > 25:
             reasons.append(f"Rajada excessiva: {wind_gust:.1f} km/h")
-        if wind_speed > 20:
+        if wind_speed > WIND_HARD_LIMIT:
+            reasons.append(f"Vento acima do limite crítico: {wind_speed:.1f} km/h")
+        elif wind_speed > 18:
             reasons.append(f"Vento excessivo: {wind_speed:.1f} km/h")
         if not reasons:
             reasons.append(f"Nível de risco proibitivo: {risk_score:.0f}/100")
 
     elif status == "WARNING":
-        if wind_speed > 15:
-            reasons.append(f"Vento elevado: {wind_speed:.1f} km/h")
-        if wind_gust > 20:
-            reasons.append(f"Rajada elevada: {wind_gust:.1f} km/h")
-        if visibility < 5:
+        if precipitation > 0:
+            reasons.append(f"Atenção: precipitação/garoa detectada ({precipitation:.1f} mm)")
+        if wind_speed > 12:
+            reasons.append(f"Vento acima do ideal para operação livre: {wind_speed:.1f} km/h")
+        if wind_gust > 15:
+            reasons.append(f"Rajadas requerem atenção: {wind_gust:.1f} km/h")
+        if visibility < 8:
             reasons.append(f"Visibilidade reduzida: {visibility:.1f} km")
         if not reasons:
-            reasons.append(f"Condições moderadas – atenção requerida (risco {risk_score:.0f}/100)")
+            reasons.append(f"Condições requerem observação (risco {risk_score:.0f}/100)")
 
     else:  # SAFE
-        reasons.append("Condições favoráveis para operação de voo")
+        reasons.append("Condições perfeitas para operação de voo")
         if risk_score > 10:
-            reasons.append(f"Monitoramento recomendado (risco {risk_score:.0f}/100)")
+            reasons.append(f"Monitoramento contínuo ativo (risco {risk_score:.0f}/100)")
 
     # ── confidence (proxy: based on precision and variance) ─────────────────
     confidence = round(1.0 - (P / 200.0) - (V / 300.0) - (variance / 500.0), 2)
