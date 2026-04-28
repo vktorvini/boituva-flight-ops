@@ -16,7 +16,7 @@ async def get_current_weather(db: Session = Depends(get_db)):
     record = db.query(WeatherRaw).order_by(WeatherRaw.timestamp.desc()).first()
     
     # Se não tiver dados ou o dado for muito velho (> 10 min), força ingestão imediata
-    if not record or (datetime.utcnow() - record.timestamp).total_seconds() > 600:
+    if not record or (datetime.utcnow() - record.timestamp.replace(tzinfo=None)).total_seconds() > 600:
         from app.agents.weather_ingestion import fetch_and_store_weather
         try:
             await fetch_and_store_weather()
@@ -35,7 +35,7 @@ async def get_flight_status(db: Session = Depends(get_db)):
     status = db.query(FlightStatus).order_by(FlightStatus.timestamp.desc()).first()
     
     # Se não tiver status ou o dado for muito velho (> 10 min), força ingestão imediata
-    if not status or (datetime.utcnow() - status.timestamp).total_seconds() > 600:
+    if not status or (datetime.utcnow() - status.timestamp.replace(tzinfo=None)).total_seconds() > 600:
         from app.agents.weather_ingestion import fetch_and_store_weather
         try:
             await fetch_and_store_weather()
