@@ -14,6 +14,21 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    document.documentElement.setAttribute("data-theme", newTheme);
+  };
+
+  useEffect(() => {
+    // Check system preference
+    if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+      setTheme("light");
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -42,15 +57,29 @@ export default function Home() {
       </Head>
 
       <div className="space-y-12">
-        {/* Title */}
-        <div className="text-center space-y-4 py-8">
-          <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-widest">
+        {/* Header */}
+        <div className="flex flex-col items-center text-center space-y-4 pt-8">
+          <div className="w-full flex justify-end px-4 absolute top-8 left-0 pointer-events-none">
+            <button 
+              onClick={toggleTheme}
+              className="pointer-events-auto p-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-colors backdrop-blur-md"
+              title="Alternar Tema"
+            >
+              {theme === "dark" ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M22 12h2"/><path d="m4.93 19.07 1.41-1.41"/><path d="m17.66 6.34 1.41-1.41"/></svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+              )}
+            </button>
+          </div>
+
+          <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 dark:text-blue-400 text-[10px] font-bold uppercase tracking-widest">
             <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mr-2" /> Monitoramento em Tempo Real
           </div>
-          <h1 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-500 tracking-tighter">
+          <h1 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-white dark:via-zinc-200 dark:to-zinc-500 tracking-tighter">
             Controle Operacional
           </h1>
-          <p className="text-zinc-400 text-sm md:text-base font-medium">
+          <p className="text-slate-500 dark:text-zinc-400 text-sm md:text-base font-medium">
             {lastUpdate
               ? `Atualizado: ${format(lastUpdate, "dd/MM/yyyy • HH:mm:ss", { locale: ptBR })}`
               : "Sincronizando sistemas..."}
@@ -75,7 +104,8 @@ export default function Home() {
               {/* Main Status Card */}
               <div className="relative group max-w-3xl mx-auto w-full">
                 <div className="absolute -inset-0.5 bg-gradient-to-b from-blue-500/20 to-indigo-500/20 rounded-[2.5rem] blur opacity-40 group-hover:opacity-70 transition duration-1000"></div>
-                <div className="relative bg-zinc-950/60 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-8 md:p-14 flex flex-col items-center gap-10 shadow-2xl">
+                <div className="relative card flex flex-col items-center gap-10 shadow-2xl overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
                   <StatusBadge status={status.status} size="lg" />
 
                   {/* Phase 3: Confidence badge */}

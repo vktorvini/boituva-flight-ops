@@ -68,23 +68,23 @@ const FACTORS = [
 
 export default function RiskExplanationCard({ breakdown, reasons, riskModelVersion, confidence }: Props) {
   return (
-    <div className="bg-zinc-950/60 backdrop-blur-xl border border-white/8 rounded-2xl p-6 space-y-6">
+    <div className="card space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
             <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
           </svg>
-          <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">Análise de Decisão</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Análise de Decisão</span>
         </div>
         <div className="flex items-center gap-2">
           {riskModelVersion && (
-            <span className="px-2 py-0.5 bg-zinc-800 rounded text-[10px] font-mono text-zinc-500 border border-white/5">
+            <span className="px-2 py-0.5 bg-zinc-500/10 rounded text-[9px] font-mono text-zinc-500 border border-zinc-500/10">
               {riskModelVersion}
             </span>
           )}
           {confidence != null && (
-            <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[10px] font-bold text-emerald-400">
+            <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
               {Math.round(confidence * 100)}% conf.
             </span>
           )}
@@ -94,15 +94,15 @@ export default function RiskExplanationCard({ breakdown, reasons, riskModelVersi
       {/* Reasons */}
       <div className="space-y-2">
         {reasons.map((r, i) => (
-          <div key={i} className="flex items-start gap-2 text-sm text-zinc-300">
-            <span className="mt-0.5 text-zinc-500">›</span>
+          <div key={i} className="flex items-start gap-2 text-xs md:text-sm text-slate-700 dark:text-zinc-300 font-medium">
+            <span className="mt-0.5 text-zinc-400">›</span>
             {r}
           </div>
         ))}
       </div>
 
       {/* Factor breakdown bars */}
-      <div className="space-y-4 pt-2 border-t border-white/5">
+      <div className="space-y-4 pt-4 border-t border-zinc-500/10">
         <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Contribuição por Fator</p>
         {FACTORS.map((f) => {
           const value = breakdown[f.key] as number;
@@ -110,14 +110,14 @@ export default function RiskExplanationCard({ breakdown, reasons, riskModelVersi
           return (
             <div key={f.key} className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <div className={`flex items-center gap-1.5 text-xs font-semibold ${f.text}`}>
+                <div className={`flex items-center gap-1.5 text-[11px] font-bold ${f.text}`}>
                   {f.icon}
                   {f.label}
-                  <span className="text-zinc-600 font-normal">({f.weight})</span>
+                  <span className="text-zinc-400 font-normal">({f.weight})</span>
                 </div>
-                <span className="text-xs font-bold text-zinc-400">{pct}/100</span>
+                <span className="text-[10px] font-bold text-zinc-400">{pct}/100</span>
               </div>
-              <div className="h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-white/5">
+              <div className="h-1.5 bg-zinc-500/10 rounded-full overflow-hidden border border-zinc-500/5">
                 <div
                   className={`h-full rounded-full bg-gradient-to-r ${f.color} transition-all duration-1000 ease-out`}
                   style={{ width: `${pct}%` }}

@@ -74,19 +74,102 @@ async def _fetch_open_meteo(client: httpx.AsyncClient) -> WeatherSourceData:
 
 async def _fetch_inmet() -> WeatherSourceData:
     """
-    Busca dados do INMET com fallback de data e múltiplas estações.
+    Estratégia de Ingestão INMET de Prioridade Máxima.
+    Tenta múltiplas URLs, técnicas (httpx e urllib) e estações próximas.
     """
+    import urllib.request
+    import json
+    
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Accept": "application/json",
+        "Referer": "https://tempo.inmet.gov.br/",
     }
-    
-    # Prioridade de estações
+
     stations = [("A713", "Ipero"), ("A726", "Piracicaba"), ("A715", "S.M.Arcanjo")]
-    
-    # Janelas de tempo (tentar hoje, se não der, tentar ontem)
-    now = datetime.now(timezone.utc) - timedelta(hours=3) # BRT
+    now = datetime.now(timezone.utc) - timedelta(hours=3)
     dates = [now.strftime("%Y-%m-%d"), (now - timedelta(days=1)).strftime("%Y-%m-%d")]
+
+    # Estratégia 1: Proximidade (Pega o dado mais fresco de QUALQUER estação perto)
+    try:
+        prox_url = f"https://apitempo.inmet.gov.br/estacao/proxima/{LAT}/{LON}"
+        logger.info(f"[INMET] Tentando Proximidade: {prox_url}")
+        
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            resp = await client.get(prox_url, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data and isinstance(data, dict) and data.get("CD_ESTACAO"):
+                    wind = _safe_float(data.get("VEN_VEL"))
+                    if wind is not None:
+                        wind *= 3.6
+                        gust = _safe_float(data.get("VEN_RAJ", data.get("VEN_VEL"))) * 3.6
+                        rain = _safe_float(data.get("CHUVA")) or 0.0
+                        code = data.get("CD_ESTACAO")
+                        logger.info(f"[INMET] Sucesso via Proximidade! Estação: {code}")
+                        return WeatherSourceData(
+                            source_name="inmet",
+                            wind_speed=round(wind, 2),
+                            wind_gust=round(gust, 2),
+                            precipitation=round(rain, 2),
+                            available=True,
+                            obs_time=now
+                        )
+    except Exception as e:
+        logger.warning(f"[INMET] Falha na estratégia de proximidade: {e}")
+
+    # Estratégia 2: Loop de Estações com Fallback urllib
+    for code, name in stations:
+        for d in dates:
+            url = f"https://apitempo.inmet.gov.br/estacao/dados/{d}/{d}/{code}"
+            try:
+                async with httpx.AsyncClient(timeout=8) as client:
+                    resp = await client.get(url, headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data and isinstance(data, list):
+                            valid = [o for o in data if _safe_float(o.get("VEN_VEL")) is not None]
+                            if valid:
+                                obs = valid[-1]
+                                wind = _safe_float(obs.get("VEN_VEL")) * 3.6
+                                gust = _safe_float(obs.get("VEN_RAJ", obs.get("VEN_VEL"))) * 3.6
+                                rain = _safe_float(obs.get("CHUVA")) or 0.0
+                                logger.info(f"[INMET] Sucesso {code} (httpx)")
+                                return WeatherSourceData(
+                                    source_name="inmet",
+                                    wind_speed=round(wind, 2),
+                                    wind_gust=round(gust, 2),
+                                    precipitation=round(rain, 2),
+                                    available=True,
+                                    obs_time=now
+                                )
+            except Exception:
+                try:
+                    req = urllib.request.Request(url, headers=headers)
+                    with urllib.request.urlopen(req, timeout=8) as response:
+                        if response.status == 200:
+                            data = json.loads(response.read().decode('utf-8'))
+                            if data and isinstance(data, list):
+                                valid = [o for o in data if _safe_float(o.get("VEN_VEL")) is not None]
+                                if valid:
+                                    obs = valid[-1]
+                                    wind = _safe_float(obs.get("VEN_VEL")) * 3.6
+                                    gust = _safe_float(obs.get("VEN_RAJ", obs.get("VEN_VEL"))) * 3.6
+                                    rain = _safe_float(obs.get("CHUVA")) or 0.0
+                                    logger.info(f"[INMET] Sucesso {code} (urllib)")
+                                    return WeatherSourceData(
+                                        source_name="inmet",
+                                        wind_speed=round(wind, 2),
+                                        wind_gust=round(gust, 2),
+                                        precipitation=round(rain, 2),
+                                        available=True,
+                                        obs_time=now
+                                    )
+                except Exception:
+                    continue
+
+    logger.warning("[INMET] Todas as estratégias falharam.")
+    return WeatherSourceData(source_name="inmet", available=False, wind_speed=0, wind_gust=0, precipitation=0)
 
     async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
         for code, name in stations:
