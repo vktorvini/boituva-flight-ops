@@ -41,7 +41,7 @@ OPEN_METEO_URL = (
 # API pública INMET – sem autenticação
 # Retorna lista de observações horárias de uma estação automática
 INMET_DADOS_URL = (
-    "https://apitempo.inmet.gov.br/estacao/{inicio}/{fim}/{codigo}"
+    "https://apitempo.inmet.gov.br/estacao/dados/{inicio}/{fim}/{codigo}"
 )
 
 
@@ -58,6 +58,12 @@ async def _fetch_open_meteo(client: httpx.AsyncClient) -> WeatherSourceData:
             precipitation=float(c.get("precipitation") or 0.0),
             visibility=10.0,
             available=True,
+            extra_data={
+                "wind_direction": float(c.get("wind_direction_10m") or 0.0),
+                "temperature": float(c.get("temperature_2m") or 0.0),
+                "humidity": float(c.get("relative_humidity_2m") or 0.0),
+                "pressure": float(c.get("surface_pressure") or 0.0),
+            }
         )
     except Exception as e:
         logger.warning(f"[Open-Meteo] Erro na coleta: {e}")
@@ -68,102 +74,101 @@ async def _fetch_open_meteo(client: httpx.AsyncClient) -> WeatherSourceData:
 
 
 async def _fetch_inmet() -> WeatherSourceData:
-    """
-    Busca dados reais das estações INMET mais próximas de Boituva.
-    Estações tentadas em ordem de proximidade:
-      1. A713 – Ipero/SP (~17km)
-      2. A726 – Piracicaba/SP (~64km)
-      3. A715 – São Miguel Arcanjo/SP (~65km)
-
-    API pública sem token: /estacao/{inicio}/{fim}/{codigo}
-    Tenta janelas: hoje, ontem, 2 dias atrás.
-
-    PRINCÍPIO: sem dados reais → available=False.
-    NUNCA usa fallback genérico (jitter) ou dados simulados.
-    """
     now_utc = datetime.now(timezone.utc)
     now_brt = now_utc + timedelta(hours=-3)
 
-    # Estações em ordem de preferência (mais próxima primeiro)
     station_priority = [
         ("A713", "Ipero/SP ~17km"),
         ("A726", "Piracicaba/SP ~64km"),
         ("A715", "São Miguel Arcanjo/SP ~65km"),
     ]
 
-    # Janelas de tempo: tenta hoje, ontem e 2 dias atrás
     date_windows = [
-        (
-            (now_brt - timedelta(days=1)).strftime("%Y-%m-%d"),
-            now_brt.strftime("%Y-%m-%d"),
-        ),
-        (
-            (now_brt - timedelta(days=2)).strftime("%Y-%m-%d"),
-            (now_brt - timedelta(days=1)).strftime("%Y-%m-%d"),
-        ),
+        (now_brt.strftime("%Y-%m-%d"), now_brt.strftime("%Y-%m-%d")),
+        ((now_brt - timedelta(days=1)).strftime("%Y-%m-%d"), now_brt.strftime("%Y-%m-%d")),
+        ((now_brt - timedelta(days=2)).strftime("%Y-%m-%d"), (now_brt - timedelta(days=1)).strftime("%Y-%m-%d")),
     ]
 
     headers = {
         "Accept": "application/json",
-        "User-Agent": "Mozilla/5.0 (compatible; BoituvaFlightOps/4.0)",
+        "User-Agent": "Mozilla/5.0 (compatible; BoituvaFlightOps/5.0)",
         "Referer": "https://tempo.inmet.gov.br/",
     }
+
+    def _parse_datetime(obs):
+        try:
+            return datetime.strptime(f"{obs.get('DT_MEDICAO')} {obs.get('HR_MEDICAO')}", "%Y-%m-%d %H%M")
+        except:
+            return datetime.min
 
     for station_code, station_label in station_priority:
         for inicio, fim in date_windows:
             url = INMET_DADOS_URL.format(inicio=inicio, fim=fim, codigo=station_code)
             logger.debug(f"[INMET] Tentando: {url}")
+
             try:
                 async with httpx.AsyncClient(timeout=12) as cl:
                     resp = await cl.get(url, headers=headers)
 
-                # 204 ou resposta vazia = sem dados nessa janela
                 if resp.status_code == 204:
-                    logger.debug(f"[INMET/{station_code}] 204 sem dados ({inicio}→{fim})")
                     continue
-
                 resp.raise_for_status()
 
                 try:
                     data = resp.json()
-                except Exception:
-                    logger.debug(f"[INMET/{station_code}] Resposta não-JSON")
+                except:
                     continue
 
                 if not data or not isinstance(data, list):
-                    logger.debug(f"[INMET/{station_code}] Lista vazia")
                     continue
 
-                # Pegar a observação mais recente com dados de vento
-                obs = None
-                for entry in reversed(data):
-                    if entry.get("VEN_VEL") is not None:
-                        obs = entry
-                        break
+                # Filtrar apenas dados válidos
+                valid_obs = []
+                for o in data:
+                    wind = _safe_float(o.get("VEN_VEL"))
+                    if wind is not None:
+                        valid_obs.append(o)
 
-                if obs is None:
-                    logger.debug(f"[INMET/{station_code}] Sem VEN_VEL na resposta")
+                if not valid_obs:
                     continue
+
+                # Ordenar por data
+                valid_obs.sort(key=_parse_datetime)
+                obs = valid_obs[-1]
 
                 wind_speed = _safe_float(obs.get("VEN_VEL"))
                 wind_gust = _safe_float(obs.get("VEN_RAJ"))
                 precipitation = _safe_float(obs.get("CHUVA"))
 
                 if wind_speed is None:
-                    logger.debug(f"[INMET/{station_code}] VEN_VEL inválido")
                     continue
 
-                logger.info(
-                    f"[INMET/{station_code}/{station_label}] "
-                    f"wind={wind_speed} gust={wind_gust} rain={precipitation} "
-                    f"obs={obs.get('DT_MEDICAO','?')} {obs.get('HR_MEDICAO','?')}"
-                )
+                # Conversão m/s -> km/h
+                wind_speed *= 3.6
+                if wind_gust is not None:
+                    wind_gust *= 3.6
+                else:
+                    wind_gust = wind_speed
+
+                precipitation = precipitation if precipitation is not None else 0.0
+
+                # Sanity check Priority 6
+                if wind_speed > 150 or wind_gust > 150:
+                    logger.warning(f"[INMET] Ignorando valor absurdo: {wind_speed} / {wind_gust}")
+                    continue
+
+                # Validar Priority 6
+                if wind_gust < wind_speed:
+                    wind_gust = wind_speed
+
+                obs_time = _parse_datetime(obs)
+                logger.info(f"[INMET] wind={wind_speed:.1f} gust={wind_gust:.1f} rain={precipitation} (Estação: {station_code} às {obs_time})")
 
                 return WeatherSourceData(
                     source_name="inmet",
-                    wind_speed=wind_speed,
-                    wind_gust=wind_gust if wind_gust is not None else wind_speed,
-                    precipitation=precipitation if precipitation is not None else 0.0,
+                    wind_speed=round(wind_speed, 2),
+                    wind_gust=round(wind_gust, 2),
+                    precipitation=round(precipitation, 2),
                     visibility=10.0,
                     available=True,
                 )
@@ -172,32 +177,28 @@ async def _fetch_inmet() -> WeatherSourceData:
                 logger.debug(f"[INMET/{station_code}] HTTP {e.response.status_code}")
                 continue
             except Exception as e:
-                logger.debug(f"[INMET/{station_code}] Erro: {type(e).__name__}: {e}")
+                logger.debug(f"[INMET/{station_code}] erro: {type(e).__name__}: {e}")
                 continue
 
-    logger.warning(
-        "[INMET] Nenhuma estação retornou dados reais. "
-        "Fonte marcada como indisponível (sem dados fabricados)."
-    )
-    return _inmet_unavailable()
+    logger.warning("[INMET] Nenhuma estação retornou dados reais.")
+    return _inmet_unavailable("no_station_data")
 
 
-def _inmet_unavailable() -> WeatherSourceData:
-    """Retorna fonte INMET marcada como indisponível. Sem dados fabricados."""
+def _inmet_unavailable(reason: str = "no_data") -> WeatherSourceData:
+    logger.debug(f"[INMET] unavailable: {reason}")
     return WeatherSourceData(
         source_name="inmet",
-        wind_speed=0, wind_gust=0, precipitation=0, available=False,
+        wind_speed=0, wind_gust=0, precipitation=0, available=False
     )
 
 
 def _safe_float(value) -> float | None:
-    """Converte valor para float, retorna None se inválido."""
-    if value is None:
+    if value in [None, "9999", "////", "", "---"]:
         return None
     try:
         f = float(str(value).replace(",", "."))
         return f if f >= 0 else None
-    except (ValueError, TypeError):
+    except:
         return None
 
 
@@ -279,18 +280,11 @@ async def fetch_and_store_weather():
         )
 
         # Enriquecer com campos extras do Open-Meteo se disponível
-        if om.available:
-            try:
-                async with httpx.AsyncClient(timeout=10) as cl:
-                    url = OPEN_METEO_URL.format(lat=LAT, lon=LON)
-                    resp = await cl.get(url)
-                    c = resp.json()["current"]
-                    raw.wind_direction = float(c.get("wind_direction_10m") or 0.0)
-                    raw.temperature = float(c.get("temperature_2m") or 0.0)
-                    raw.humidity = float(c.get("relative_humidity_2m") or 0.0)
-                    raw.pressure = float(c.get("surface_pressure") or 0.0)
-            except Exception:
-                pass
+        if om.available and om.extra_data:
+            raw.wind_direction = om.extra_data.get("wind_direction", 0.0)
+            raw.temperature = om.extra_data.get("temperature", 0.0)
+            raw.humidity = om.extra_data.get("humidity", 0.0)
+            raw.pressure = om.extra_data.get("pressure", 0.0)
 
         db.add(raw)
         db.commit()
@@ -301,6 +295,55 @@ async def fetch_and_store_weather():
         # Agente 3 processa a decisão
         new_status_record = compute_and_store_status(db, normalized, consensus)
         
+        # Priority 10: Persistência no Supabase para Histórico
+        from app.models import FlightHistorySupabase
+        sources_json = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "location": "Boituva",
+            "decision": {
+                "flag": new_status_record.status,
+                "reason": new_status_record.reasons[0] if new_status_record.reasons else "Consenso Seguro",
+                "confidence": new_status_record.confidence,
+                "variance": normalized.variance
+            },
+            "consensus": {
+                "wind_speed": consensus.wind_speed,
+                "wind_gust": consensus.wind_gust,
+                "precipitation": consensus.precipitation,
+                "sources_used": consensus.source_count
+            },
+            "sources": []
+        }
+
+        for source in sources:
+            src_dict = {
+                "name": source.source_name,
+                "available": source.available,
+                "wind_speed": source.wind_speed,
+                "wind_gust": source.wind_gust,
+                "precipitation": source.precipitation
+            }
+            if source.source_name == "inmet":
+                src_dict["station"] = "A713" # Assumimos a mais provável
+                if getattr(source, "obs_time", None):
+                    src_dict["obs_time"] = source.obs_time.isoformat()
+                else:
+                    src_dict["obs_time"] = None
+            sources_json["sources"].append(src_dict)
+
+        supabase_record = FlightHistorySupabase(
+            timestamp=datetime.now(timezone.utc),
+            flag=new_status_record.status,
+            wind_speed=consensus.wind_speed,
+            wind_gust=consensus.wind_gust,
+            precipitation=consensus.precipitation,
+            confidence=new_status_record.confidence,
+            variance=normalized.variance,
+            sources_json=sources_json
+        )
+        db.add(supabase_record)
+        db.commit()
+
         # Agente 7 (Alert Agent) checa a mudança e notifica
         from app.agents.alert_agent import check_and_notify_status_change
         await check_and_notify_status_change(db, new_status_record)

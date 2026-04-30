@@ -18,6 +18,7 @@ Princípio: somente fontes com available=True entram no cálculo.
 
 from __future__ import annotations
 import statistics
+from datetime import datetime
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -44,6 +45,8 @@ class WeatherSourceData:
     precipitation: float          # mm
     visibility: float = 10.0      # km (padrão: visibilidade perfeita)
     available: bool = True        # False se a fonte falhou/não tem dados reais
+    obs_time: Optional[datetime] = None  # Timestamp real da observação (se suportado)
+    extra_data: dict = field(default_factory=dict) # Guarda campos extras (temp, hum, pres, dir)
 
 
 @dataclass

@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
+import uuid
 from sqlalchemy import Column, Integer, Float, String, DateTime, JSON
 from app.database import Base
 
@@ -73,3 +74,18 @@ class AlertLog(Base):
     message_sent = Column(String)
     # 1 se pelo menos um webhook respondeu ok, senão 0
     success = Column(Integer, default=1)
+
+
+class FlightHistorySupabase(Base):
+    """Tabela estruturada para o Supabase com foco em histórico completo (Phase 5)."""
+    __tablename__ = "flight_history_supabase"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    flag = Column(String, index=True)
+    wind_speed = Column(Float)
+    wind_gust = Column(Float)
+    precipitation = Column(Float)
+    confidence = Column(Float)
+    variance = Column(Float)
+    sources_json = Column(JSON)

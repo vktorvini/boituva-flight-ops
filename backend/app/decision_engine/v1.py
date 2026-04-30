@@ -34,9 +34,10 @@ SAFE_MAX = 20.0          # Mais restritivo (era 30.0)
 WARNING_MAX = 50.0       # Mais restritivo (era 60.0)
 
 # ── hard rule thresholds ─────────────────────────────────────────────────────
-RAIN_HARD_LIMIT = 0.1    # mm (Qualquer garoa/chuva > 0.1 fecha a pista)
-GUST_HARD_LIMIT = 30.0   # km/h (Mais restritivo, era 35.0)
-WIND_HARD_LIMIT = 22.0   # km/h (Novo limite para fechar pista)
+RAIN_HARD_LIMIT = 0.0    # mm (Qualquer presença de chuva fecha a pista)
+GUST_HARD_LIMIT = 22.0   # km/h (Rajadas acima de 22 km/h -> CANCELAMENTO)
+WIND_HARD_LIMIT = 16.0   # km/h (Vento contínuo acima de 16 km/h -> alto risco/CANCELAMENTO)
+INSTABILITY_LIMIT = 10.0 # km/h (Diferença entre rajada e vento > 10 km/h -> instabilidade crítica)
 
 
 def _normalize(wind_speed: float, wind_gust: float,
@@ -107,6 +108,9 @@ def evaluate(
     if wind_speed > WIND_HARD_LIMIT:
         status = "PROHIBITED"
         hard_rules_fired.append(f"hard_rule:wind_speed>{WIND_HARD_LIMIT}km/h ({wind_speed:.1f} km/h)")
+    if (wind_gust - wind_speed) > INSTABILITY_LIMIT:
+        status = "PROHIBITED"
+        hard_rules_fired.append(f"hard_rule:instability>(gust-wind)>{INSTABILITY_LIMIT}km/h ({wind_gust - wind_speed:.1f} km/h)")
 
     # Hard rules para WARNING (Se o modelo classificou como SAFE mas não está "perfeito")
     if status == "SAFE":
@@ -125,17 +129,13 @@ def evaluate(
 
     if status == "PROHIBITED":
         if precipitation > RAIN_HARD_LIMIT:
-            reasons.append(f"Chuva acima do limite crítico: {precipitation:.1f} mm")
-        elif precipitation > 0:
-            reasons.append(f"Precipitação detectada: {precipitation:.1f} mm")
+            reasons.append(f"Chuva detectada, voo proibido: {precipitation:.1f} mm")
         if wind_gust > GUST_HARD_LIMIT:
             reasons.append(f"Rajada acima do limite crítico: {wind_gust:.1f} km/h")
-        elif wind_gust > 25:
-            reasons.append(f"Rajada excessiva: {wind_gust:.1f} km/h")
         if wind_speed > WIND_HARD_LIMIT:
             reasons.append(f"Vento acima do limite crítico: {wind_speed:.1f} km/h")
-        elif wind_speed > 18:
-            reasons.append(f"Vento excessivo: {wind_speed:.1f} km/h")
+        if (wind_gust - wind_speed) > INSTABILITY_LIMIT:
+            reasons.append(f"Instabilidade crítica (Rajada - Vento > 10): {wind_gust - wind_speed:.1f} km/h de diferença")
         if not reasons:
             reasons.append(f"Nível de risco proibitivo: {risk_score:.0f}/100")
 
