@@ -2,7 +2,7 @@ import httpx
 from datetime import datetime, timezone, timedelta
 import logging
 from app.consensus_engine.engine import WeatherSourceData, run_consensus
-from app.db.database import get_db, SessionLocal
+from app.database import get_db, SessionLocal
 from app.models import WeatherRaw, WeatherNormalized, FlightHistorySupabase
 from app.agents.decision_engine import compute_and_store_status
 import urllib.request
