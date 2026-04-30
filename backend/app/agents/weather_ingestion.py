@@ -1,6 +1,7 @@
 import httpx
 from datetime import datetime, timezone, timedelta
 import logging
+import traceback
 from app.consensus_engine.engine import WeatherSourceData, run_consensus
 from app.database import get_db, SessionLocal
 from app.models import WeatherRaw, WeatherNormalized, FlightHistorySupabase
@@ -80,7 +81,9 @@ async def _fetch_inmet() -> WeatherSourceData:
                                     available=True,
                                     obs_time=now
                                 )
-                except: continue
+                except Exception as e:
+                    logger.debug(f"[INMET] Falha URL {url}: {e}")
+                    continue
 
     # Estratégia 2: Proximidade via urllib
     try:
@@ -101,7 +104,8 @@ async def _fetch_inmet() -> WeatherSourceData:
                         available=True,
                         obs_time=now
                     )
-    except: pass
+    except Exception as e:
+        logger.error(f"[INMET] Erro crítico na proximidade: {e}\n{traceback.format_exc()}")
 
     return WeatherSourceData(source_name="inmet", available=False, wind_speed=0, wind_gust=0, precipitation=0)
 
@@ -124,20 +128,28 @@ async def _fetch_met_norway() -> WeatherSourceData:
                 available=True
             )
     except Exception as e:
-        logger.warning(f"[Met Norway] Erro: {e}")
+        logger.error(f"[Met Norway] Erro: {e}\n{traceback.format_exc()}")
         return WeatherSourceData(source_name="met_norway", available=False, wind_speed=0, wind_gust=0, precipitation=0)
 
 async def fetch_and_store_weather():
     """Pipeline principal de ingestão."""
+    logger.info("Iniciando coleta de dados meteorológicos...")
+    
     async with httpx.AsyncClient(timeout=12) as client:
         try: om = await _fetch_open_meteo(client)
-        except: om = WeatherSourceData(source_name="open_meteo", available=False, wind_speed=0, wind_gust=0, precipitation=0)
+        except Exception as e:
+            logger.critical(f"Falha inesperada Open-Meteo: {e}")
+            om = WeatherSourceData(source_name="open_meteo", available=False, wind_speed=0, wind_gust=0, precipitation=0)
 
     try: inmet = await _fetch_inmet()
-    except: inmet = WeatherSourceData(source_name="inmet", available=False, wind_speed=0, wind_gust=0, precipitation=0)
+    except Exception as e:
+        logger.critical(f"Falha inesperada INMET: {e}")
+        inmet = WeatherSourceData(source_name="inmet", available=False, wind_speed=0, wind_gust=0, precipitation=0)
 
     try: met_norway = await _fetch_met_norway()
-    except: met_norway = WeatherSourceData(source_name="met_norway", available=False, wind_speed=0, wind_gust=0, precipitation=0)
+    except Exception as e:
+        logger.critical(f"Falha inesperada Met Norway: {e}")
+        met_norway = WeatherSourceData(source_name="met_norway", available=False, wind_speed=0, wind_gust=0, precipitation=0)
 
     sources = [om, inmet, met_norway]
     consensus = run_consensus(sources)
@@ -191,6 +203,7 @@ async def fetch_and_store_weather():
             db.rollback()
 
     except Exception as e:
+        print(f"!!! ERRO FATAL NO BACKEND !!!\n{traceback.format_exc()}")
         logger.error(f"Erro no banco: {e}")
         db.rollback()
     finally:
