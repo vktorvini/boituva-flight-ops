@@ -1,15 +1,15 @@
 :root {
-  --bg-color: #ffffff;
-  --card-bg: rgba(248, 250, 252, 0.8);
-  --border-color: rgba(0, 0, 0, 0.05);
+  --bg-color: #fcfcfd;
+  --card-bg: #ffffff;
+  --border-color: rgba(0, 0, 0, 0.06);
   --text-primary: #0f172a;
-  --text-secondary: #475569;
+  --text-secondary: #64748b;
   --accent-blue: #3b82f6;
   --accent-emerald: #10b981;
   --accent-amber: #f59e0b;
   --accent-rose: #f43f5e;
-  --glass-blur: blur(12px);
-  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --glass-blur: blur(16px);
+  --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
 }
 
 [data-theme='dark'] {

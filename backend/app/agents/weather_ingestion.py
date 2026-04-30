@@ -176,17 +176,19 @@ async def fetch_and_store_weather():
             payload = [{"source": s.source_name, "available": s.available, "wind": s.wind_speed, "gust": s.wind_gust} for s in sources]
             history = FlightHistorySupabase(
                 timestamp=raw.timestamp,
-                status=new_status_record.status,
-                risk_score=new_status_record.risk_score,
+                flag=new_status_record.status,
                 wind_speed=consensus.wind_speed,
                 wind_gust=consensus.wind_gust,
                 precipitation=consensus.precipitation,
-                sources_json=payload,
-                decision_reasons=new_status_record.reasons
+                confidence=new_status_record.confidence or 0.0,
+                variance=normalized.variance or 0.0,
+                sources_json=payload
             )
             db.add(history)
             db.commit()
-        except: db.rollback()
+        except Exception as e:
+            logger.error(f"[Supabase] Erro ao salvar histórico: {e}")
+            db.rollback()
 
     except Exception as e:
         logger.error(f"Erro no banco: {e}")

@@ -16,19 +16,25 @@ export default function Home() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
-  const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
-    document.documentElement.setAttribute("data-theme", newTheme);
-  };
-
   useEffect(() => {
-    // Check system preference
-    if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+    // 1. Check local storage
+    const savedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+      // 2. Check system preference
       setTheme("light");
       document.documentElement.setAttribute("data-theme", "light");
     }
   }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    document.documentElement.setAttribute("data-theme", newTheme);
+    localStorage.setItem("theme", newTheme);
+  };
 
   const fetchData = async () => {
     try {
