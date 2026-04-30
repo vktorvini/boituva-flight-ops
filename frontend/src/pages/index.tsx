@@ -51,9 +51,10 @@ export default function Home() {
   }, []);
 
   return (
-    <>
+    <div className="min-h-screen font-sans selection:bg-blue-500/30 selection:text-blue-200 bg-[var(--bg-color)] text-[var(--text-primary)] transition-colors duration-300">
       <Head>
-        <title>Boituva Flight Ops – Status</title>
+        <title>Boituva Flight Ops | Status de Voo</title>
+        <meta name="description" content="Sistema de monitoramento meteorológico para balonismo em Boituva." />
       </Head>
 
       <div className="space-y-12">
@@ -88,7 +89,7 @@ export default function Home() {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-4 text-red-400 text-sm text-center">
+          <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm text-center">
             {error}
           </div>
         )}
@@ -96,7 +97,7 @@ export default function Home() {
         {/* Status */}
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-10 h-10 border-2 border-zinc-700 border-t-white rounded-full animate-spin" />
+            <div className="w-10 h-10 border-2 border-slate-300 dark:border-zinc-700 border-t-blue-500 rounded-full animate-spin" />
           </div>
         ) : (
           status && (
@@ -104,8 +105,8 @@ export default function Home() {
               {/* Main Status Card */}
               <div className="relative group max-w-3xl mx-auto w-full">
                 <div className="absolute -inset-0.5 bg-gradient-to-b from-blue-500/20 to-indigo-500/20 rounded-[2.5rem] blur opacity-40 group-hover:opacity-70 transition duration-1000"></div>
-                <div className="relative card flex flex-col items-center gap-10 shadow-2xl overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                <div className="relative bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/5 p-8 rounded-[2rem] flex flex-col items-center gap-10 shadow-2xl overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
                   <StatusBadge status={status.status} size="lg" />
 
                   {/* Phase 3: Confidence badge */}
@@ -117,7 +118,7 @@ export default function Home() {
                   )}
                   <div className="flex flex-col items-center gap-2 text-center">
                     {status.reasons.map((r, i) => (
-                      <p key={i} className="text-zinc-300 font-medium text-lg">
+                      <p key={i} className="text-slate-700 dark:text-zinc-300 font-medium text-lg">
                         {r}
                       </p>
                     ))}
@@ -125,11 +126,11 @@ export default function Home() {
 
                   {/* Risk meter */}
                   <div className="w-full max-w-sm space-y-3 mt-4">
-                    <div className="flex justify-between text-xs font-bold tracking-widest uppercase text-zinc-500">
+                    <div className="flex justify-between text-xs font-bold tracking-widest uppercase text-slate-500 dark:text-zinc-500">
                       <span>Nível de Risco</span>
-                      <span className="text-white bg-zinc-800 px-2 py-0.5 rounded-md">{Math.round(status.risk_score)}%</span>
+                      <span className="text-slate-900 dark:text-white bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">{Math.round(status.risk_score)}%</span>
                     </div>
-                    <div className="h-3 bg-zinc-900 rounded-full overflow-hidden border border-white/5 shadow-inner p-px">
+                    <div className="h-3 bg-slate-200 dark:bg-zinc-950 rounded-full overflow-hidden border border-slate-300 dark:border-white/5 shadow-inner p-px">
                       <div
                         className={`h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden ${
                           status.status === "SAFE"
