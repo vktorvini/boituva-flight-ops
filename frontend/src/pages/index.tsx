@@ -188,32 +188,32 @@ export default function Home() {
               mainReason={status.reasons[0]} 
             />
 
-            {/* 2. Alertas Críticos */}
-            <AlertsPanel reasons={status.reasons} />
-
-            {/* Map and Compass Side by Side on Desktop */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              {/* Wind Compass */}
-              {status.wind_direction !== undefined && (
-                <div className="flex justify-center items-center">
-                  <WindCompass 
-                    degrees={status.wind_direction} 
-                    speed={status.wind_speed} 
-                    gust={status.wind_gust} 
-                    label={directionLabel(status.wind_direction)} 
-                  />
-                </div>
-              )}
-              
-              {/* Weather Map */}
-              <div className="flex justify-center">
-                <WeatherMap 
-                  windSpeed={status.wind_speed} 
-                  windGust={status.wind_gust} 
-                  windDirectionLabel={status.wind_direction !== undefined ? directionLabel(status.wind_direction) : "N/A"} 
-                  precipitation={status.precipitation} 
+            {/* 2. Bússola */}
+            {status.wind_direction !== undefined && (
+              <div className="flex justify-center items-center w-full max-w-md mx-auto mt-8">
+                <WindCompass 
+                  degrees={status.wind_direction} 
+                  speed={status.wind_speed} 
+                  gust={status.wind_gust} 
+                  label={directionLabel(status.wind_direction)} 
                 />
               </div>
+            )}
+
+            {/* 3. Alertas Críticos */}
+            <AlertsPanel reasons={status.reasons} />
+
+            {/* 4. Mapa Operacional */}
+            <div className="w-full mt-8">
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 dark:text-zinc-500 text-center mb-4">
+                Mapa Operacional
+              </h3>
+              <WeatherMap 
+                windSpeed={status.wind_speed} 
+                windGust={status.wind_gust} 
+                windDirectionLabel={status.wind_direction !== undefined ? directionLabel(status.wind_direction) : "N/A"} 
+                precipitation={status.precipitation} 
+              />
             </div>
 
             {/* Metrics Grid */}
