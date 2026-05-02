@@ -285,7 +285,7 @@ export default function Home() {
                 <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
                   Fontes Meteorológicas
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {status.sources_detail.map((src) => (
                     <div
                       key={src.source_name}
