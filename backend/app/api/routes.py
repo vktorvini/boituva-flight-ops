@@ -68,6 +68,7 @@ async def get_flight_status(db: Session = Depends(get_db)):
         reasons=status.reasons or [],
         wind_speed=raw.wind_speed,
         wind_gust=raw.wind_gust,
+        wind_direction=status.wind_direction,
         precipitation=raw.precipitation,
         risk_model_version=status.risk_model_version,
         breakdown=breakdown or None,

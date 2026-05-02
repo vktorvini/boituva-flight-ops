@@ -26,6 +26,7 @@ class WeatherNormalized(Base):
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
     wind_speed = Column(Float)
     wind_gust = Column(Float)
+    wind_direction = Column(Float, nullable=True) # Added for v2
     precipitation = Column(Float)
     confidence_score = Column(Float)
     visibility = Column(Float, nullable=True)   # km, Phase 2
@@ -41,6 +42,7 @@ class FlightStatus(Base):
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
     status = Column(String)            # SAFE / WARNING / PROHIBITED
     risk_score = Column(Float)
+    wind_direction = Column(Float, nullable=True) # Added for v2
     reasons = Column(JSON)
     # Phase 2 fields
     risk_model_version = Column(String, nullable=True)
@@ -85,6 +87,7 @@ class FlightHistorySupabase(Base):
     flag = Column(String, index=True)
     wind_speed = Column(Float)
     wind_gust = Column(Float)
+    wind_direction = Column(Float, nullable=True) # Added for v2
     precipitation = Column(Float)
     confidence = Column(Float)
     variance = Column(Float)

@@ -37,6 +37,7 @@ export interface FlightStatus {
   reasons: string[];
   wind_speed: number;
   wind_gust: number;
+  wind_direction?: number;
   precipitation: number;
   // Phase 2
   risk_model_version?: string;

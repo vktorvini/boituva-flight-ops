@@ -148,7 +148,39 @@ async def _fetch_met_norway(client: httpx.AsyncClient) -> WeatherSourceData:
                                  wind_speed=0, wind_gust=0, precipitation=0)
 
 
-# ── Fonte 3: INMET (Histórica — contexto, NÃO para decisão imediata) ─────────
+# ── Fonte 3: NOAA (GFS via Open-Meteo) (Real-time Model) ───────────────────
+
+async def _fetch_noaa(client: httpx.AsyncClient) -> WeatherSourceData:
+    """
+    Usa o modelo GFS (Global Forecast System) da NOAA através da API do Open-Meteo.
+    """
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current=wind_speed_10m,wind_gusts_10m,precipitation&models=gfs_seamless"
+    try:
+        resp = await client.get(url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        current = data["current"]
+
+        wind_speed = float(current.get("wind_speed_10m", 0))
+        wind_gust = float(current.get("wind_gusts_10m", wind_speed))
+        rain = float(current.get("precipitation", 0))
+
+        logger.info(f"[NOAA/GFS]  wind={wind_speed:.1f}km/h gust={wind_gust:.1f}km/h rain={rain:.1f}mm")
+
+        return WeatherSourceData(
+            source_name="noaa",
+            wind_speed=round(wind_speed, 2),
+            wind_gust=round(wind_gust, 2),
+            precipitation=round(rain, 2),
+            available=True,
+        )
+    except Exception as e:
+        logger.warning(f"[NOAA/GFS] Falha: {e}")
+        return WeatherSourceData(source_name="noaa", available=False,
+                                 wind_speed=0, wind_gust=0, precipitation=0)
+
+
+# ── Fonte 4: INMET (Histórica — contexto, NÃO para decisão imediata) ─────────
 
 async def _fetch_inmet(client: httpx.AsyncClient) -> WeatherSourceData:
     """
@@ -253,6 +285,13 @@ async def fetch_and_store_weather() -> None:
             norway = WeatherSourceData(source_name="met_norway", available=False,
                                        wind_speed=0, wind_gust=0, precipitation=0)
 
+        try:
+            noaa = await _fetch_noaa(client)
+        except Exception:
+            logger.critical(f"[NOAA/GFS] Erro inesperado:\n{traceback.format_exc()}")
+            noaa = WeatherSourceData(source_name="noaa", available=False,
+                                     wind_speed=0, wind_gust=0, precipitation=0)
+
         # Fonte histórica (INMET)
         try:
             inmet = await _fetch_inmet(client)
@@ -261,7 +300,7 @@ async def fetch_and_store_weather() -> None:
             inmet = WeatherSourceData(source_name="inmet", available=False,
                                       wind_speed=0, wind_gust=0, precipitation=0)
 
-    sources = [om, norway, inmet]
+    sources = [om, norway, noaa, inmet]
 
     # Log do consenso
     available_names = [s.source_name for s in sources if s.available]
@@ -300,6 +339,7 @@ async def fetch_and_store_weather() -> None:
             timestamp=raw.timestamp,
             wind_speed=raw.wind_speed,
             wind_gust=raw.wind_gust,
+            wind_direction=raw.wind_direction,
             precipitation=raw.precipitation,
             visibility=raw.visibility,
             variance=consensus.variance,
@@ -329,6 +369,7 @@ async def fetch_and_store_weather() -> None:
                 flag=status_record.status,
                 wind_speed=consensus.wind_speed,
                 wind_gust=consensus.wind_gust,
+                wind_direction=raw.wind_direction,
                 precipitation=consensus.precipitation,
                 confidence=status_record.confidence or 0.0,
                 variance=normalized.variance or 0.0,

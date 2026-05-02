@@ -45,6 +45,7 @@ def compute_and_store_status(
         timestamp=normalized.timestamp,
         status=result["status"],
         risk_score=result["risk_score"],
+        wind_direction=normalized.wind_direction,
         reasons=result["reasons"],
         risk_model_version=result["risk_model_version"],
         risk_breakdown=result["breakdown"],

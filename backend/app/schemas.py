@@ -40,6 +40,7 @@ class FlightStatusOut(BaseModel):
     reasons: List[str]
     wind_speed: float
     wind_gust: float
+    wind_direction: Optional[float] = None # Added for v2
     precipitation: float
     # Phase 2
     risk_model_version: Optional[str] = None

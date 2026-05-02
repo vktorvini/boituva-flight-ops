@@ -12,6 +12,7 @@ import StatusBadge from "@/components/StatusBadge";
 import MetricCard from "@/components/MetricCard";
 import RiskExplanationCard from "@/components/RiskExplanationCard";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
+import WindCompass from "@/components/WindCompass";
 
 // ── Theme Helpers ──────────────────────────────────────────────────────────────
 function applyTheme(theme: "dark" | "light") {
@@ -216,6 +217,18 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
+            {/* Wind Compass */}
+            {status.wind_direction !== undefined && (
+              <div className="flex justify-center">
+                <WindCompass 
+                  degrees={status.wind_direction} 
+                  speed={status.wind_speed} 
+                  gust={status.wind_gust} 
+                  label={directionLabel(status.wind_direction)} 
+                />
+              </div>
+            )}
 
             {/* Metrics Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
