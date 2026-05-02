@@ -354,16 +354,24 @@ async def fetch_and_store_weather() -> None:
 
         # 4. FlightHistorySupabase (análise histórica)
         try:
-            payload = [
-                {
-                    "source": s.source_name,
+            from app.agents.wind_direction_agent import degrees_to_cardinal
+            sources_dict = {}
+            for s in sources:
+                sources_dict[s.source_name] = {
                     "available": s.available,
                     "wind_kmh": s.wind_speed,
                     "gust_kmh": s.wind_gust,
                     "rain_mm": s.precipitation,
                 }
-                for s in sources
-            ]
+            
+            payload = {
+                "flag": status_record.status,
+                "wind_speed": consensus.wind_speed,
+                "wind_gust": consensus.wind_gust,
+                "direction": degrees_to_cardinal(raw.wind_direction) if raw.wind_direction is not None else "N/A",
+                "sources": sources_dict
+            }
+            
             history = FlightHistorySupabase(
                 timestamp=raw.timestamp,
                 flag=status_record.status,

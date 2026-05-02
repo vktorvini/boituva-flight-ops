@@ -13,6 +13,10 @@ import MetricCard from "@/components/MetricCard";
 import RiskExplanationCard from "@/components/RiskExplanationCard";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import WindCompass from "@/components/WindCompass";
+import FlightStatusBanner from "@/components/FlightStatusBanner";
+import dynamic from "next/dynamic";
+
+const WeatherMap = dynamic(() => import("@/components/WeatherMap"), { ssr: false });
 
 // ── Theme Helpers ──────────────────────────────────────────────────────────────
 function applyTheme(theme: "dark" | "light") {
@@ -81,12 +85,12 @@ export default function Home() {
   }, [fetchData]);
 
   // Resolve status color for bar
-  const barColor =
-    status?.status === "SAFE"
-      ? "from-emerald-500 to-green-400"
-      : status?.status === "WARNING"
-      ? "from-amber-500 to-yellow-400"
-      : "from-rose-500 to-red-400";
+  const getBarColor = (score: number) => {
+    if (score <= 30) return "from-emerald-500 to-green-400";
+    if (score <= 60) return "from-amber-500 to-yellow-400";
+    return "from-rose-500 to-red-400";
+  };
+  const barColor = status ? getBarColor(status.risk_score) : "from-gray-500 to-gray-400";
 
   return (
     <div
@@ -176,59 +180,64 @@ export default function Home() {
         {/* Status Section */}
         {!loading && status && (
           <>
-            {/* Main Status Card */}
-            <div className="card flex flex-col items-center gap-8 text-center relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-60" />
-              <StatusBadge status={status.status} size="lg" />
+            {/* Main Status Banner */}
+            <FlightStatusBanner status={status.status} />
 
-              {/* Confidence Badge */}
-              {status.confidence != null && (
-                <ConfidenceBadge
-                  confidence={status.confidence}
-                  sourceCount={status.source_count ?? undefined}
-                />
-              )}
-
-              {/* Reasons */}
-              <div className="space-y-2 max-w-xl">
-                {status.reasons.map((r, i) => (
-                  <p key={i} className="text-base font-medium" style={{ color: "var(--text-secondary)" }}>
-                    {r}
+            {/* Reasons / Alerts */}
+            <div className="space-y-2 max-w-xl mx-auto text-center">
+              {status.reasons.map((r, i) => {
+                const isCriticalGust = r.toLowerCase().includes("rajada") && r.toLowerCase().includes("limite");
+                return (
+                  <p key={i} className={`text-base font-medium ${isCriticalGust ? "text-red-500 font-bold" : ""}`} style={{ color: isCriticalGust ? "var(--accent-rose)" : "var(--text-secondary)" }}>
+                    {isCriticalGust ? `🔴 ALERTA: ${r}` : r}
                   </p>
-                ))}
-              </div>
+                );
+              })}
+            </div>
 
-              {/* Risk Meter */}
-              <div className="w-full max-w-sm space-y-2">
-                <div className="flex justify-between text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
-                  <span>Nível de Risco</span>
-                  <span
-                    className="px-2 py-0.5 rounded-md"
-                    style={{ backgroundColor: "var(--bg-page)", color: "var(--text-primary)" }}
-                  >
-                    {Math.round(status.risk_score)}%
-                  </span>
-                </div>
-                <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--border)" }}>
-                  <div
-                    className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-1000 ease-out`}
-                    style={{ width: `${Math.min(status.risk_score, 100)}%` }}
-                  />
-                </div>
+            {/* Risk Meter */}
+            <div className="w-full max-w-sm space-y-2 mx-auto mt-4">
+              <div className="flex justify-between text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+                <span>Nível de Risco</span>
+                <span
+                  className="px-2 py-0.5 rounded-md"
+                  style={{ backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }}
+                >
+                  {Math.round(status.risk_score)}%
+                </span>
+              </div>
+              <div className="h-3 rounded-full overflow-hidden border" style={{ backgroundColor: "var(--bg-card)", borderColor: "var(--border)" }}>
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-1000 ease-out`}
+                  style={{ width: `${Math.min(status.risk_score, 100)}%` }}
+                />
               </div>
             </div>
 
-            {/* Wind Compass */}
-            {status.wind_direction !== undefined && (
+            {/* Map and Compass Side by Side on Desktop */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              {/* Wind Compass */}
+              {status.wind_direction !== undefined && (
+                <div className="flex justify-center items-center">
+                  <WindCompass 
+                    degrees={status.wind_direction} 
+                    speed={status.wind_speed} 
+                    gust={status.wind_gust} 
+                    label={directionLabel(status.wind_direction)} 
+                  />
+                </div>
+              )}
+              
+              {/* Weather Map */}
               <div className="flex justify-center">
-                <WindCompass 
-                  degrees={status.wind_direction} 
-                  speed={status.wind_speed} 
-                  gust={status.wind_gust} 
-                  label={directionLabel(status.wind_direction)} 
+                <WeatherMap 
+                  windSpeed={status.wind_speed} 
+                  windGust={status.wind_gust} 
+                  windDirectionLabel={status.wind_direction !== undefined ? directionLabel(status.wind_direction) : "N/A"} 
+                  precipitation={status.precipitation} 
                 />
               </div>
-            )}
+            </div>
 
             {/* Metrics Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

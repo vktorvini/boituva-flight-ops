@@ -148,7 +148,7 @@ export default function MapaPage() {
       leafletMap.current.removeLayer(heatLayer.current);
     }
 
-    heatLayer.current = L.heatLayer(points, {
+    heatLayer.current = (L as any).heatLayer(points, {
       radius: 35,
       blur: 25,
       maxZoom: 14,
