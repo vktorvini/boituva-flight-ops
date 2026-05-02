@@ -1,32 +1,57 @@
+/*
+  theme.css — Boituva Flight Ops
+  Variáveis CSS globais para Light Mode (padrão) e Dark Mode (classe .dark no <html>).
+  O Tailwind usa darkMode: "class", então basta ter .dark no <html>.
+*/
+
 :root {
-  --bg-color: #fcfcfd;
-  --card-bg: #ffffff;
-  --border-color: rgba(0, 0, 0, 0.06);
+  /* Backgrounds */
+  --bg-page: #f4f6f9;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+
+  /* Borders */
+  --border: rgba(0, 0, 0, 0.07);
+  --border-strong: rgba(0, 0, 0, 0.12);
+
+  /* Text */
   --text-primary: #0f172a;
-  --text-secondary: #64748b;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.08);
+
+  /* Accents */
   --accent-blue: #3b82f6;
   --accent-emerald: #10b981;
   --accent-amber: #f59e0b;
   --accent-rose: #f43f5e;
-  --glass-blur: blur(16px);
-  --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
 }
 
 .dark {
-  --bg-color: #09090b;
-  --card-bg: rgba(18, 18, 20, 0.6);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --text-primary: #f8fafc;
+  /* Backgrounds */
+  --bg-page: #09090b;
+  --bg-card: rgba(18, 18, 22, 0.85);
+  --bg-card-hover: rgba(28, 28, 34, 0.9);
+
+  /* Borders */
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.1);
+
+  /* Text */
+  --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
-  --accent-blue: #3b82f6;
-  --accent-emerald: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-rose: #f43f5e;
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --text-muted: #64748b;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.4);
 }
 
 body {
-  background-color: var(--bg-color);
+  background-color: var(--bg-page);
   color: var(--text-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }

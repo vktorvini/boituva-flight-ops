@@ -1,13 +1,40 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Head from "next/head";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { getFlightStatus, getWeather, FlightStatus, WeatherCurrent } from "@/lib/api";
+import {
+  getFlightStatus,
+  getWeather,
+  FlightStatus,
+  WeatherCurrent,
+} from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import MetricCard from "@/components/MetricCard";
 import RiskExplanationCard from "@/components/RiskExplanationCard";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 
+// ── Theme Helpers ──────────────────────────────────────────────────────────────
+function applyTheme(theme: "dark" | "light") {
+  if (theme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
+}
+
+function getInitialTheme(): "dark" | "light" {
+  if (typeof window === "undefined") return "dark";
+  const saved = localStorage.getItem("theme") as "dark" | "light" | null;
+  return saved ?? "dark";
+}
+
+// ── Direction Helper ──────────────────────────────────────────────────────────
+function directionLabel(deg: number): string {
+  const dirs = ["N", "NE", "L", "SE", "S", "SO", "O", "NO"];
+  return dirs[Math.round(deg / 45) % 8];
+}
+
+// ── Page Component ─────────────────────────────────────────────────────────────
 export default function Home() {
   const [status, setStatus] = useState<FlightStatus | null>(null);
   const [weather, setWeather] = useState<WeatherCurrent | null>(null);
@@ -16,29 +43,23 @@ export default function Home() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
+  // Apply saved theme on mount
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as "dark" | "light" | null;
-    const initialTheme = savedTheme || "dark";
-    setTheme(initialTheme);
-    if (initialTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    const initial = getInitialTheme();
+    setTheme(initial);
+    applyTheme(initial);
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-    if (newTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  };
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      applyTheme(next);
+      localStorage.setItem("theme", next);
+      return next;
+    });
+  }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [s, w] = await Promise.all([getFlightStatus(), getWeather()]);
       setStatus(s.data);
@@ -46,221 +67,264 @@ export default function Home() {
       setLastUpdate(new Date());
       setError(null);
     } catch {
-      setError("Erro ao conectar com o backend. Verifique se o servidor está rodando.");
+      setError("Erro ao conectar com o servidor. Tentando novamente...");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 60_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchData]);
+
+  // Resolve status color for bar
+  const barColor =
+    status?.status === "SAFE"
+      ? "from-emerald-500 to-green-400"
+      : status?.status === "WARNING"
+      ? "from-amber-500 to-yellow-400"
+      : "from-rose-500 to-red-400";
 
   return (
-    <div className="min-h-screen font-sans selection:bg-blue-500/30 selection:text-blue-200 bg-[var(--bg-color)] text-[var(--text-primary)] transition-colors duration-300">
+    <div
+      className="min-h-screen transition-colors duration-300"
+      style={{ backgroundColor: "var(--bg-page)", color: "var(--text-primary)" }}
+    >
       <Head>
-        <title>Boituva Flight Ops | Status de Voo</title>
-        <meta name="description" content="Sistema de monitoramento meteorológico para balonismo em Boituva." />
+        <title>Boituva Flight Ops — Controle Operacional</title>
+        <meta
+          name="description"
+          content="Sistema de monitoramento meteorológico para operações de balonismo em Boituva/SP."
+        />
       </Head>
 
-      <div className="space-y-12">
-        {/* Header */}
-        <div className="flex flex-col items-center text-center space-y-4 pt-8">
-          <div className="w-full flex justify-end px-4 absolute top-8 left-0 pointer-events-none">
-            <button 
-              onClick={toggleTheme}
-              className="pointer-events-auto p-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-all shadow-lg backdrop-blur-md flex items-center gap-2 group"
-              title="Alternar Tema"
-            >
-              <div className="relative w-5 h-5">
-                {theme === "dark" ? (
-                  <svg className="text-yellow-400 absolute inset-0 transform transition-transform duration-500 rotate-0 scale-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M22 12h2"/><path d="m4.93 19.07 1.41-1.41"/><path d="m17.66 6.34 1.41-1.41"/></svg>
-                ) : (
-                  <svg className="text-indigo-600 absolute inset-0 transform transition-transform duration-500 rotate-0 scale-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-                )}
-              </div>
-              <span className="text-xs font-bold text-slate-600 dark:text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
-              </span>
-            </button>
+      {/* ── Top Bar ───────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-50 backdrop-blur-md border-b"
+        style={{ borderColor: "var(--border)", backgroundColor: "color-mix(in srgb, var(--bg-page) 80%, transparent)" }}>
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+              Boituva Flight Ops
+            </span>
           </div>
 
-          <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 dark:text-blue-400 text-[10px] font-bold uppercase tracking-widest">
-            <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mr-2" /> Monitoramento em Tempo Real
-          </div>
-          <h1 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-white dark:via-zinc-200 dark:to-zinc-500 tracking-tighter">
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105 active:scale-95 border"
+            style={{
+              backgroundColor: "var(--bg-card)",
+              borderColor: "var(--border-strong)",
+              color: "var(--text-secondary)",
+              boxShadow: "var(--shadow-card)",
+            }}
+          >
+            {theme === "dark" ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400">
+                  <circle cx="12" cy="12" r="4"/>
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M22 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+                </svg>
+                Modo Claro
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-500">
+                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                </svg>
+                Modo Escuro
+              </>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* ── Main Content ──────────────────────────────────────────────────── */}
+      <main className="max-w-6xl mx-auto px-4 py-10 space-y-10">
+
+        {/* Page Title */}
+        <div className="text-center space-y-3">
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight">
             Controle Operacional
           </h1>
-          <p className="text-slate-500 dark:text-zinc-400 text-sm md:text-base font-medium">
+          <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
             {lastUpdate
-              ? `Atualizado: ${format(lastUpdate, "dd/MM/yyyy • HH:mm:ss", { locale: ptBR })}`
-              : "Sincronizando sistemas..."}
+              ? `Atualizado em ${format(lastUpdate, "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR })}`
+              : "Sincronizando dados..."}
           </p>
         </div>
 
-        {/* Error */}
+        {/* Error Banner */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm text-center">
+          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-rose-500 text-sm text-center font-medium">
             {error}
           </div>
         )}
 
-        {/* Status */}
-        {loading ? (
-          <div className="flex justify-center py-16">
-            <div className="w-10 h-10 border-2 border-slate-300 dark:border-zinc-700 border-t-blue-500 rounded-full animate-spin" />
+        {/* Loading */}
+        {loading && (
+          <div className="flex justify-center py-20">
+            <div className="w-10 h-10 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
           </div>
-        ) : (
-          status && (
-            <>
-              {/* Main Status Card */}
-              <div className="relative group max-w-3xl mx-auto w-full">
-                <div className="absolute -inset-0.5 bg-gradient-to-b from-blue-500/20 to-indigo-500/20 rounded-[2.5rem] blur opacity-40 group-hover:opacity-70 transition duration-1000"></div>
-                <div className="relative bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/5 p-8 rounded-[2rem] flex flex-col items-center gap-10 shadow-2xl overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
-                  <StatusBadge status={status.status} size="lg" />
+        )}
 
-                  {/* Phase 3: Confidence badge */}
-                  {status.confidence != null && (
-                    <ConfidenceBadge
-                      confidence={status.confidence}
-                      sourceCount={status.source_count ?? undefined}
-                    />
-                  )}
-                  <div className="flex flex-col items-center gap-2 text-center">
-                    {status.reasons.map((r, i) => (
-                      <p key={i} className="text-slate-700 dark:text-zinc-300 font-medium text-lg">
-                        {r}
-                      </p>
-                    ))}
-                  </div>
+        {/* Status Section */}
+        {!loading && status && (
+          <>
+            {/* Main Status Card */}
+            <div className="card flex flex-col items-center gap-8 text-center relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-60" />
+              <StatusBadge status={status.status} size="lg" />
 
-                  {/* Risk meter */}
-                  <div className="w-full max-w-sm space-y-3 mt-4">
-                    <div className="flex justify-between text-xs font-bold tracking-widest uppercase text-slate-500 dark:text-zinc-500">
-                      <span>Nível de Risco</span>
-                      <span className="text-slate-900 dark:text-white bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">{Math.round(status.risk_score)}%</span>
-                    </div>
-                    <div className="h-3 bg-slate-200 dark:bg-zinc-950 rounded-full overflow-hidden border border-slate-300 dark:border-white/5 shadow-inner p-px">
-                      <div
-                        className={`h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden ${
-                          status.status === "SAFE"
-                            ? "bg-gradient-to-r from-emerald-500 to-green-400"
-                            : status.status === "WARNING"
-                            ? "bg-gradient-to-r from-yellow-600 to-yellow-400"
-                            : "bg-gradient-to-r from-red-600 to-rose-500"
-                        }`}
-                        style={{ width: `${Math.round(status.risk_score)}%` }}
-                      >
-                         <div className="absolute inset-0 bg-white/20 w-full h-full animate-[pulse_2s_infinite]"></div>
-                      </div>
-                    </div>
-                  </div>
+              {/* Confidence Badge */}
+              {status.confidence != null && (
+                <ConfidenceBadge
+                  confidence={status.confidence}
+                  sourceCount={status.source_count ?? undefined}
+                />
+              )}
 
-                  {/* Fontes Individuais (Evitar Média) */}
-                  {status.sources_detail && status.sources_detail.length > 0 && (
-                    <div className="w-full flex flex-col items-center mt-2 pt-6 border-t border-white/5">
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-3">Vento reportado pelas fontes ativas</p>
-                      <div className="flex flex-wrap justify-center gap-3">
-                        {status.sources_detail.filter(s => s.available).map(s => {
-                          const name = s.source_name === "open_meteo" ? "Open-Meteo" : s.source_name === "inmet" ? "INMET" : "Norway";
-                          const isRed = s.wind_speed > 22;
-                          const isYellow = s.wind_speed > 12 && !isRed;
-                          return (
-                            <div key={s.source_name} className="bg-zinc-900/80 border border-white/5 rounded-lg px-4 py-2 flex flex-col items-center shadow-lg">
-                              <span className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">
-                                {name}
-                              </span>
-                              <span className={`text-sm font-black ${isRed ? 'text-red-400' : isYellow ? 'text-yellow-400' : 'text-emerald-400'}`}>
-                                {s.wind_speed.toFixed(1)} km/h
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
+              {/* Reasons */}
+              <div className="space-y-2 max-w-xl">
+                {status.reasons.map((r, i) => (
+                  <p key={i} className="text-base font-medium" style={{ color: "var(--text-secondary)" }}>
+                    {r}
+                  </p>
+                ))}
               </div>
 
-              {/* Metrics grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-4">
-                <MetricCard
-                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/></svg>}
-                  label="Vento (Pior Cenário)"
-                  value={status.wind_speed.toFixed(1)}
-                  unit="km/h"
-                  sub={status.wind_speed > 22 ? "⛔ Limite excedido" : status.wind_speed > 12 ? "⚠️ Elevado" : "Operação Padrão"}
-                />
-                <MetricCard
-                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8a2.5 2.5 0 1 1 2 4H2"/></svg>}
-                  label="Rajada (Pior Cenário)"
-                  value={status.wind_gust.toFixed(1)}
-                  unit="km/h"
-                  sub={status.wind_gust > 30 ? "⛔ Limite excedido" : status.wind_gust > 15 ? "⚠️ Elevada" : "Estável"}
-                />
-                <MetricCard
-                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg>}
-                  label="Chuva (Pior Cenário)"
-                  value={status.precipitation.toFixed(1)}
-                  unit="mm"
-                  sub={status.precipitation > 0 ? "⛔ Voo proibido" : "Tempo Seco"}
-                />
-                {weather && (
+              {/* Risk Meter */}
+              <div className="w-full max-w-sm space-y-2">
+                <div className="flex justify-between text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+                  <span>Nível de Risco</span>
+                  <span
+                    className="px-2 py-0.5 rounded-md"
+                    style={{ backgroundColor: "var(--bg-page)", color: "var(--text-primary)" }}
+                  >
+                    {Math.round(status.risk_score)}%
+                  </span>
+                </div>
+                <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--border)" }}>
+                  <div
+                    className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-1000 ease-out`}
+                    style={{ width: `${Math.min(status.risk_score, 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <MetricCard
+                icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/></svg>}
+                label="Vento (Pior Cenário)"
+                value={status.wind_speed.toFixed(1)}
+                unit="km/h"
+                sub={status.wind_speed > 16 ? "⛔ Crítico" : status.wind_speed > 12 ? "⚠️ Atenção" : "✅ Normal"}
+              />
+              <MetricCard
+                icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8a2.5 2.5 0 1 1 2 4H2"/></svg>}
+                label="Rajada (Pior Cenário)"
+                value={status.wind_gust.toFixed(1)}
+                unit="km/h"
+                sub={status.wind_gust > 22 ? "⛔ Cancelamento" : status.wind_gust > 15 ? "⚠️ Elevada" : "✅ Estável"}
+              />
+              <MetricCard
+                icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg>}
+                label="Chuva (Pior Cenário)"
+                value={status.precipitation.toFixed(1)}
+                unit="mm"
+                sub={status.precipitation > 0 ? "⛔ Voo Proibido" : "✅ Tempo Seco"}
+              />
+              {weather && (
+                <>
                   <MetricCard
-                    icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>}
+                    icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>}
                     label="Temperatura"
                     value={weather.temperature.toFixed(1)}
                     unit="°C"
                     sub={`Umidade: ${weather.humidity.toFixed(0)}%`}
                   />
-                )}
-              </div>
-
-              {/* Extra weather */}
-              {weather && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                   <MetricCard
-                    icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>}
+                    icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>}
                     label="Direção do Vento"
                     value={weather.wind_direction.toFixed(0)}
                     unit="°"
                     sub={directionLabel(weather.wind_direction)}
                   />
                   <MetricCard
-                    icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="m4.93 4.93 14.14 14.14"/><path d="M2 12h20"/><path d="m4.93 19.07 14.14-14.14"/></svg>}
-                    label="Pressão Atmosférica"
+                    icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="m4.93 4.93 14.14 14.14"/><path d="M2 12h20"/><path d="m4.93 19.07 14.14-14.14"/></svg>}
+                    label="Pressão"
                     value={weather.pressure.toFixed(0)}
                     unit="hPa"
                   />
-                  <MetricCard
-                    icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a5 5 0 0 0 5-5c0-2-2.5-7-5-12-2.5 5-5 10-5 12a5 5 0 0 0 5 5Z"/></svg>}
-                    label="Umidade Relativa"
-                    value={weather.humidity.toFixed(0)}
-                    unit="%"
-                  />
+                </>
+              )}
+            </div>
+
+            {/* Source Status */}
+            {status.sources_detail && status.sources_detail.length > 0 && (
+              <div className="card space-y-4">
+                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+                  Fontes Meteorológicas
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {status.sources_detail.map((src) => (
+                    <div
+                      key={src.source_name}
+                      className="rounded-xl border p-4 space-y-2 transition-all"
+                      style={{
+                        borderColor: src.available ? "var(--border)" : "rgba(244,63,94,0.2)",
+                        backgroundColor: src.available ? "var(--bg-card)" : "rgba(244,63,94,0.05)",
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
+                          {src.source_name.replace("_", " ")}
+                        </span>
+                        <span className={`w-2 h-2 rounded-full ${src.available ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+                      </div>
+                      {src.available ? (
+                        <>
+                          <div className="text-2xl font-black">{src.wind_speed.toFixed(1)} <span className="text-xs font-normal" style={{ color: "var(--text-muted)" }}>km/h</span></div>
+                          <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                            Rajada: {src.wind_gust.toFixed(1)} km/h
+                            {src.status && (
+                              <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                src.status === "SAFE" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" :
+                                src.status === "WARNING" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" :
+                                "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                              }`}>
+                                {src.status}
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-xs text-rose-500 font-medium">Fonte offline</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              )}
-              {/* Risk Explanation Card – Phase 2 */}
-              {status.breakdown && (
-                <RiskExplanationCard
-                  breakdown={status.breakdown}
-                  reasons={status.reasons}
-                  riskModelVersion={status.risk_model_version}
-                  confidence={status.confidence}
-                />
-              )}
-            </>
-          )
+              </div>
+            )}
+
+            {/* Risk Explanation */}
+            {status.breakdown && (
+              <RiskExplanationCard
+                breakdown={status.breakdown}
+                reasons={status.reasons}
+                riskModelVersion={status.risk_model_version}
+                confidence={status.confidence}
+              />
+            )}
+          </>
         )}
-      </div>
+      </main>
     </div>
   );
-}
-
-function directionLabel(deg: number): string {
-  const dirs = ["N", "NE", "L", "SE", "S", "SO", "O", "NO"];
-  return dirs[Math.round(deg / 45) % 8];
 }

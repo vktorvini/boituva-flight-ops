@@ -3,41 +3,27 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --safe: #22c55e;
-  --warning: #eab308;
-  --prohibited: #ef4444;
-}
-
-.status-safe {
-  @apply border-emerald-500/50 text-emerald-500 bg-emerald-500/10;
-}
-
-.status-warning {
-  @apply border-amber-500/50 text-amber-500 bg-amber-500/10;
-}
-
-.status-prohibited {
-  @apply border-rose-500/50 text-rose-500 bg-rose-500/10;
-}
-
+/* ── Card Component ─────────────────────────────────────────────────────────── */
 .card {
-  background-color: var(--card-bg);
-  border-color: var(--border-color);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-shadow);
-  @apply rounded-3xl p-8 border;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  @apply rounded-2xl p-6;
 }
 
+.card:hover {
+  background-color: var(--bg-card-hover);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Status Glows ───────────────────────────────────────────────────────────── */
 .glow-safe {
-  box-shadow: 0 0 40px rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.12);
 }
-
 .glow-warning {
-  box-shadow: 0 0 40px rgba(245, 158, 11, 0.15);
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.12);
 }
-
 .glow-prohibited {
-  box-shadow: 0 0 40px rgba(244, 63, 94, 0.15);
+  box-shadow: 0 0 40px rgba(244, 63, 94, 0.12);
 }
