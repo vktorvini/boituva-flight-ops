@@ -108,3 +108,37 @@ export const createAlertHook = (data: { name: string; url: string }) =>
   API.post<AlertHook>("/alertas/hooks", data);
 export const deleteAlertHook = (id: number) => API.delete(`/alertas/hooks/${id}`);
 export const triggerBotTest = () => API.post("/alertas/test");
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
+export interface AnalyticsSummary {
+  period_days: number;
+  total_records: number;
+  safe: number;
+  warning: number;
+  prohibited: number;
+  safe_pct: number;
+  warning_pct: number;
+  prohibited_pct: number;
+  avg_risk_score: number;
+  max_risk_score: number;
+}
+
+export interface DayAnalytics {
+  date: string;
+  safe: number;
+  warning: number;
+  prohibited: number;
+  total: number;
+  avg_risk: number;
+}
+
+export interface AnalyticsDaily {
+  period_days: number;
+  days: DayAnalytics[];
+}
+
+export const getAnalyticsSummary = (days = 30) =>
+  API.get<AnalyticsSummary>(`/analytics/resumo?days=${days}`);
+export const getAnalyticsDaily = (days = 30) =>
+  API.get<AnalyticsDaily>(`/analytics/diario?days=${days}`);

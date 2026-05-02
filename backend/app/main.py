@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
 from app.api.routes import router
+from app.api.analytics import analytics_router
 from app.agents.weather_ingestion import fetch_and_store_weather
 
 logging.basicConfig(level=logging.INFO)
@@ -42,3 +43,4 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(analytics_router)
