@@ -1,57 +1,76 @@
-# 🪂 Boituva Flight Ops
+# 🪂 Boituva Flight Ops v2
 
-Sistema de decisão de voo baseado em clima para **Balonismo** e **Paraquedismo** em Boituva–SP.
-
----
-
-## Stack
-
-| Camada    | Tecnologia                          |
-|-----------|-------------------------------------|
-| Backend   | Python · FastAPI · SQLAlchemy       |
-| Banco     | PostgreSQL                          |
-| Frontend  | Next.js · TypeScript · TailwindCSS  |
-| Dados     | Open-Meteo (gratuito, sem API key)  |
+Sistema de decisão de voo baseado em clima para **Balonismo** e **Paraquedismo** em Boituva–SP. A versão 2 foca em segurança operacional, inteligência meteorológica e visualização profissional.
 
 ---
 
-## Outputs
+## 🚀 Novidades na V2
 
-| Status       | Condição                                      |
-|--------------|-----------------------------------------------|
-| ✅ SEGURO     | Vento ≤15, Rajada ≤20, Sem chuva              |
-| ⚠️ ATENÇÃO   | Vento 15–20 **ou** Rajada 20–25               |
-| 🚫 PROIBIDO  | Vento >20 **ou** Rajada >25 **ou** Chuva >0   |
+- **Integração Multi-Fonte (Worst-Case Consensus)**: O motor agora consulta simultaneamente Open-Meteo, Met Norway, NOAA (modelo GFS) e cruza com o histórico do INMET. O sistema de decisão sempre assume o *pior cenário* entre as fontes para garantir total segurança operacional.
+- **Visualização Cartográfica com Windy**: O novo mapa operacional conta com duas camadas: um Heatmap de Risco desenvolvido nativamente e um motor visual de fluxo de ventos integrado diretamente ao mapa profissional do Windy.
+- **Bússola de Vento em Tempo Real**: Componente React customizado (`WindCompass`) com renderização em tempo real das direções magnéticas do vento e velocidade máxima de rajadas.
+- **Theme Switcher Global**: Suporte transparente a Dark Mode e Light Mode persistidos no `localStorage`.
+- **Módulo de Analytics Preditivo**: Dashboards de estatísticas e gráficos históricos projetados para facilitar a previsão das janelas de voo ao longo dos dias.
+- **Hardening de Segurança e Deploy**: Senhas e credenciais blindadas no Supabase com variáveis ambientais seguras.
 
 ---
 
-## Rodar em Desenvolvimento
+## 🏗 Stack e Arquitetura
 
-### 1. PostgreSQL
+O sistema é moldado em torno do padrão de **Agentes de Dados**, onde agentes autônomos ingerem, processam e validam as condições meteorológicas de forma agnóstica.
 
-```bash
-docker run -d \
-  --name boituva-db \
-  -e POSTGRES_DB=boituva_ops \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -p 5432:5432 \
-  postgres:16-alpine
-```
+| Camada    | Tecnologia                                  |
+|-----------|---------------------------------------------|
+| Backend   | Python 3.11+ · FastAPI · SQLAlchemy         |
+| Banco     | Supabase (PostgreSQL 15+)                   |
+| Frontend  | Next.js 14 · TypeScript · TailwindCSS       |
+| Dados     | Open-Meteo, Met Norway, NOAA, INMET         |
+
+---
+
+## 🚦 Motor de Decisão (Consensus Engine)
+
+| Status       | Condição (Baseada na métrica mais severa de todas as fontes)  |
+|--------------|---------------------------------------------------------------|
+| ✅ SEGURO     | Vento ≤12km/h, Rajada ≤15km/h, Sem chuva                      |
+| ⚠️ ATENÇÃO   | Vento >12km/h **ou** Rajada >15km/h                           |
+| 🚫 PROIBIDO  | Vento >22km/h **ou** Rajada >30km/h **ou** Chuva > 0mm        |
+
+*(Nota: Os limites são customizáveis via variáveis no Decision Engine e levam em conta fatores de instabilidade).*
+
+---
+
+## 🔄 Fluxo dos Agents
+
+1. **Weather Ingestion Agent (`weather_ingestion.py`)**: Conecta-se com APIs externas lidando com falhas, rate-limits e timeouts de forma resiliente.
+2. **Wind Direction Agent (`wind_direction_agent.py`)**: Converte graus azimutais em direções cardinais lógicas para o dashboard.
+3. **Decision Engine Agent (`decision_engine.py`)**: Aplica a lógica operacional estrita para decidir a bandeira do voo e gravar os históricos analíticos.
+4. **Flight Window Agent**: Calcula predições para as próximas 48 horas analisando gradientes de risco.
+5. **Analytics & API Agent**: Fornece agregações e endpoints REST rápidos para a UI em Next.js.
+
+---
+
+## 🛠 Como Rodar (Desenvolvimento Local)
+
+### 1. Banco de Dados (PostgreSQL / Supabase Local)
+
+Utilize uma string de conexão PostgreSQL compatível nas variáveis de ambiente.
 
 ### 2. Backend
 
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate          # No Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-cp .env.example .env               # edite se necessário
+# Copie e edite suas variáveis de ambiente:
+cp .env.example .env               
+
+# Inicie a API na porta 8000:
 uvicorn app.main:app --reload --port 8000
 ```
-
-Acesse: http://localhost:8000/docs
+> Documentação interativa disponível em: `http://localhost:8000/docs`
 
 ### 3. Frontend
 
@@ -59,64 +78,36 @@ Acesse: http://localhost:8000/docs
 cd frontend
 npm install
 
-cp .env.example .env.local         # edite se necessário
+# Configure o .env para apontar para o backend:
+cp .env.example .env.local         
+
+# Inicie o Next.js:
 npm run dev
 ```
-
-Acesse: http://localhost:3000
-
----
-
-## Rodar com Docker Compose
-
-```bash
-# Configure os .env
-cp .env.example backend/.env
-cp frontend/.env.example frontend/.env.local
-
-# Suba tudo
-docker compose up --build
-```
-
-| Serviço  | URL                       |
-|----------|---------------------------|
-| Frontend | http://localhost:3000     |
-| API      | http://localhost:8000     |
-| Docs API | http://localhost:8000/docs|
+> Acesse o Dashboard em: `http://localhost:3000`
 
 ---
 
-## Endpoints API
+## 📡 Principais Endpoints da API
 
-| Método | Rota             | Descrição                    |
-|--------|------------------|------------------------------|
-| GET    | /clima/atual     | Dados meteorológicos atuais  |
-| GET    | /voo/status      | Status SAFE/WARNING/PROIBIDO |
-| GET    | /voo/janela      | Previsão horária 48h         |
-| GET    | /voo/historico   | Histórico de registros       |
-| GET    | /health          | Health check                 |
-
----
-
-## Páginas Frontend
-
-| Rota        | Página                      |
-|-------------|------------------------------|
-| `/`         | Status atual + métricas      |
-| `/janela`   | Timeline 48h                 |
-| `/grafico`  | Gráficos de vento/chuva      |
-| `/historico`| Tabela de histórico          |
+| Método | Rota               | Descrição                                 |
+|--------|--------------------|-------------------------------------------|
+| GET    | `/voo/status`      | Retorna status SAFE/WARNING/PROHIBITED e payload do consenso |
+| GET    | `/voo/janela`      | Previsão horária de risco para 48h        |
+| GET    | `/analytics/resumo`| KPIs históricos globais (risco médio, totais) |
+| GET    | `/analytics/diario`| Agregação de decisões e riscos por dia    |
 
 ---
 
-## Atualização Automática
+## 📱 Páginas Frontend
 
-- Backend busca dados a cada **5 minutos** automaticamente
-- Frontend recarrega status a cada **60 segundos**
-- Dados: [Open-Meteo](https://open-meteo.com) — gratuito, sem chave
+| Rota          | Módulo                               |
+|---------------|--------------------------------------|
+| `/`           | **Controle Operacional**: Bússola dinâmica, cards de fontes, status. |
+| `/mapa`       | **Mapa Tático**: Alternância entre Heatmap de Risco e Fluxo de Vento (Windy). |
+| `/analytics`  | **Análise Preditiva**: KPIs e gráfico de estabilidade histórica. |
+| `/janela`     | **Previsão**: Timeline 48h das próximas condições de voo. |
 
 ---
 
-## Pasta no Windows
-
-Coloque em: `C:\Users\Vktor\Boituva Clima\boituva-flight-ops`
+*Projeto construído para garantir o máximo nível de confiabilidade e resiliência a falhas no ecossistema de balonismo.*
