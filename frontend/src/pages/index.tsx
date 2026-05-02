@@ -10,10 +10,11 @@ import {
 } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import MetricCard from "@/components/MetricCard";
-import RiskExplanationCard from "@/components/RiskExplanationCard";
-import ConfidenceBadge from "@/components/ConfidenceBadge";
+import FlightStatusHero from "@/components/FlightStatusHero";
+import AlertsPanel from "@/components/AlertsPanel";
+import TechnicalDetails from "@/components/TechnicalDetails";
 import WindCompass from "@/components/WindCompass";
-import FlightStatusBanner from "@/components/FlightStatusBanner";
+import RiskExplanationCard from "@/components/RiskExplanationCard";
 import dynamic from "next/dynamic";
 
 const WeatherMap = dynamic(() => import("@/components/WeatherMap"), { ssr: false });
@@ -180,39 +181,15 @@ export default function Home() {
         {/* Status Section */}
         {!loading && status && (
           <>
-            {/* Main Status Banner */}
-            <FlightStatusBanner status={status.status} />
+            {/* 1. Main Status Banner (Hero) */}
+            <FlightStatusHero 
+              status={status.status} 
+              riskScore={status.risk_score}
+              mainReason={status.reasons[0]} 
+            />
 
-            {/* Reasons / Alerts */}
-            <div className="space-y-2 max-w-xl mx-auto text-center">
-              {status.reasons.map((r, i) => {
-                const isCriticalGust = r.toLowerCase().includes("rajada") && r.toLowerCase().includes("limite");
-                return (
-                  <p key={i} className={`text-base font-medium ${isCriticalGust ? "text-red-500 font-bold" : ""}`} style={{ color: isCriticalGust ? "var(--accent-rose)" : "var(--text-secondary)" }}>
-                    {isCriticalGust ? `🔴 ALERTA: ${r}` : r}
-                  </p>
-                );
-              })}
-            </div>
-
-            {/* Risk Meter */}
-            <div className="w-full max-w-sm space-y-2 mx-auto mt-4">
-              <div className="flex justify-between text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
-                <span>Nível de Risco</span>
-                <span
-                  className="px-2 py-0.5 rounded-md"
-                  style={{ backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }}
-                >
-                  {Math.round(status.risk_score)}%
-                </span>
-              </div>
-              <div className="h-3 rounded-full overflow-hidden border" style={{ backgroundColor: "var(--bg-card)", borderColor: "var(--border)" }}>
-                <div
-                  className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-1000 ease-out`}
-                  style={{ width: `${Math.min(status.risk_score, 100)}%` }}
-                />
-              </div>
-            </div>
+            {/* 2. Alertas Críticos */}
+            <AlertsPanel reasons={status.reasons} />
 
             {/* Map and Compass Side by Side on Desktop */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
@@ -288,62 +265,8 @@ export default function Home() {
               )}
             </div>
 
-            {/* Source Status */}
-            {status.sources_detail && status.sources_detail.length > 0 && (
-              <div className="card space-y-4">
-                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
-                  Fontes Meteorológicas
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {status.sources_detail.map((src) => (
-                    <div
-                      key={src.source_name}
-                      className="rounded-xl border p-4 space-y-2 transition-all"
-                      style={{
-                        borderColor: src.available ? "var(--border)" : "rgba(244,63,94,0.2)",
-                        backgroundColor: src.available ? "var(--bg-card)" : "rgba(244,63,94,0.05)",
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
-                          {src.source_name.replace("_", " ")}
-                        </span>
-                        <span className={`w-2 h-2 rounded-full ${src.available ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
-                      </div>
-                      {src.available ? (
-                        <>
-                          <div className="text-2xl font-black">{src.wind_speed.toFixed(1)} <span className="text-xs font-normal" style={{ color: "var(--text-muted)" }}>km/h</span></div>
-                          <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                            Rajada: {src.wind_gust.toFixed(1)} km/h
-                            {src.status && (
-                              <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                src.status === "SAFE" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" :
-                                src.status === "WARNING" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" :
-                                "bg-rose-500/15 text-rose-600 dark:text-rose-400"
-                              }`}>
-                                {src.status}
-                              </span>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <p className="text-xs text-rose-500 font-medium">Fonte offline</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Risk Explanation */}
-            {status.breakdown && (
-              <RiskExplanationCard
-                breakdown={status.breakdown}
-                reasons={status.reasons}
-                riskModelVersion={status.risk_model_version}
-                confidence={status.confidence}
-              />
-            )}
+            {/* Technical Details (Collapsible) */}
+            <TechnicalDetails status={status} />
           </>
         )}
       </main>
