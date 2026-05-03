@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import Head from "next/head";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -65,11 +65,28 @@ export default function Home() {
     });
   }, []);
 
+  const prevWindRef = React.useRef<number | null>(null);
+  const [windTrend, setWindTrend] = useState<"aumentando" | "estavel" | "diminuindo" | null>(null);
+
   const fetchData = useCallback(async () => {
     try {
       const [s, w] = await Promise.all([getFlightStatus(), getWeather()]);
-      setStatus(s.data);
-      setWeather(w.data);
+      
+      const newStatus = s.data || s;
+      
+      if (prevWindRef.current !== null && newStatus.wind_speed !== undefined) {
+        const diff = newStatus.wind_speed - prevWindRef.current;
+        if (diff > 1.0) setWindTrend("aumentando");
+        else if (diff < -1.0) setWindTrend("diminuindo");
+        else setWindTrend("estavel");
+      } else {
+        setWindTrend("estavel"); // default on first load
+      }
+      
+      prevWindRef.current = newStatus.wind_speed;
+
+      setStatus(newStatus as FlightStatus);
+      setWeather(w.data || w);
       setLastUpdate(new Date());
       setError(null);
     } catch {
@@ -195,7 +212,8 @@ export default function Home() {
                   degrees={status.wind_direction} 
                   speed={status.wind_speed} 
                   gust={status.wind_gust} 
-                  label={directionLabel(status.wind_direction)} 
+                  label={directionLabel(status.wind_direction)}
+                  trend={windTrend}
                 />
               </div>
             )}
@@ -204,16 +222,27 @@ export default function Home() {
             <AlertsPanel reasons={status.reasons} />
 
             {/* 4. Mapa Operacional */}
-            <div className="w-full mt-8">
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 dark:text-zinc-500 text-center mb-4">
+            <div className="w-full mt-8 space-y-6">
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 dark:text-zinc-500 text-center">
                 Mapa Operacional
               </h3>
               <WeatherMap 
                 windSpeed={status.wind_speed} 
                 windGust={status.wind_gust} 
-                windDirectionLabel={status.wind_direction !== undefined ? directionLabel(status.wind_direction) : "N/A"} 
+                windDirectionLabel={status.wind_direction !== undefined ? directionLabel(status.wind_direction) : "N/A"}
+                windDirectionDegree={status.wind_direction}
                 precipitation={status.precipitation} 
               />
+              
+              {/* Windy Iframe (Opcional - Visual de Partículas) */}
+              <div className="w-full h-[400px] rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-lg">
+                <iframe 
+                  width="100%" 
+                  height="100%" 
+                  src="https://www.windy.com/?-23.28,-47.66,10" 
+                  frameBorder="0"
+                />
+              </div>
             </div>
 
             {/* Metrics Grid */}
