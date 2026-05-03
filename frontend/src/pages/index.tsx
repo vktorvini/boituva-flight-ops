@@ -14,7 +14,6 @@ import FlightStatusHero from "@/components/FlightStatusHero";
 import AlertsPanel from "@/components/AlertsPanel";
 import TechnicalDetails from "@/components/TechnicalDetails";
 import WindCompass from "@/components/WindCompass";
-import RiskExplanationCard from "@/components/RiskExplanationCard";
 import dynamic from "next/dynamic";
 
 const WeatherMap = dynamic(() => import("@/components/WeatherMap"), { ssr: false });
@@ -48,6 +47,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [refreshPulse, setRefreshPulse] = useState(false);
 
   // Apply saved theme on mount
   useEffect(() => {
@@ -65,8 +65,10 @@ export default function Home() {
     });
   }, []);
 
-  const prevWindRef = React.useRef<number | null>(null);
+  // Wind trend tracking with intensity
+  const prevWindRef = useRef<number | null>(null);
   const [windTrend, setWindTrend] = useState<"aumentando" | "estavel" | "diminuindo" | null>(null);
+  const [trendIntensity, setTrendIntensity] = useState<"leve" | "forte" | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -74,13 +76,24 @@ export default function Home() {
       
       const newStatus = s.data || s;
       
+      // Calculate trend with intensity
       if (prevWindRef.current !== null && newStatus.wind_speed !== undefined) {
         const diff = newStatus.wind_speed - prevWindRef.current;
-        if (diff > 1.0) setWindTrend("aumentando");
-        else if (diff < -1.0) setWindTrend("diminuindo");
-        else setWindTrend("estavel");
+        const absDiff = Math.abs(diff);
+        
+        if (diff > 0.5) {
+          setWindTrend("aumentando");
+          setTrendIntensity(absDiff > 3 ? "forte" : "leve");
+        } else if (diff < -0.5) {
+          setWindTrend("diminuindo");
+          setTrendIntensity(absDiff > 3 ? "forte" : "leve");
+        } else {
+          setWindTrend("estavel");
+          setTrendIntensity(null);
+        }
       } else {
-        setWindTrend("estavel"); // default on first load
+        setWindTrend("estavel");
+        setTrendIntensity(null);
       }
       
       prevWindRef.current = newStatus.wind_speed;
@@ -89,6 +102,10 @@ export default function Home() {
       setWeather(w.data || w);
       setLastUpdate(new Date());
       setError(null);
+
+      // Visual refresh pulse
+      setRefreshPulse(true);
+      setTimeout(() => setRefreshPulse(false), 800);
     } catch {
       setError("Erro ao conectar com o servidor. Tentando novamente...");
     } finally {
@@ -102,17 +119,9 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  // Resolve status color for bar
-  const getBarColor = (score: number) => {
-    if (score <= 30) return "from-emerald-500 to-green-400";
-    if (score <= 60) return "from-amber-500 to-yellow-400";
-    return "from-rose-500 to-red-400";
-  };
-  const barColor = status ? getBarColor(status.risk_score) : "from-gray-500 to-gray-400";
-
   return (
     <div
-      className="min-h-screen transition-colors duration-300"
+      className="min-h-screen transition-colors duration-500"
       style={{ backgroundColor: "var(--bg-page)", color: "var(--text-primary)" }}
     >
       <Head>
@@ -128,7 +137,10 @@ export default function Home() {
         style={{ borderColor: "var(--border)", backgroundColor: "color-mix(in srgb, var(--bg-page) 80%, transparent)" }}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="relative flex h-2.5 w-2.5">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 ${refreshPulse ? "" : "hidden"}`} />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+            </span>
             <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
               Boituva Flight Ops
             </span>
@@ -138,7 +150,7 @@ export default function Home() {
           <button
             onClick={toggleTheme}
             aria-label={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105 active:scale-95 border"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-300 hover:scale-105 active:scale-95 border"
             style={{
               backgroundColor: "var(--bg-card)",
               borderColor: "var(--border-strong)",
@@ -167,14 +179,14 @@ export default function Home() {
       </header>
 
       {/* ── Main Content ──────────────────────────────────────────────────── */}
-      <main className="max-w-6xl mx-auto px-4 py-10 space-y-10">
+      <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
 
         {/* Page Title */}
-        <div className="text-center space-y-3">
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight">
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight">
             Controle Operacional
           </h1>
-          <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-xs font-medium tabular-nums" style={{ color: "var(--text-secondary)" }}>
             {lastUpdate
               ? `Atualizado em ${format(lastUpdate, "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR })}`
               : "Sincronizando dados..."}
@@ -183,7 +195,7 @@ export default function Home() {
 
         {/* Error Banner */}
         {error && (
-          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-rose-500 text-sm text-center font-medium">
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-rose-500 text-sm text-center font-medium">
             {error}
           </div>
         )}
@@ -198,7 +210,7 @@ export default function Home() {
         {/* Status Section */}
         {!loading && status && (
           <>
-            {/* 1. Main Status Banner (Hero) */}
+            {/* 1. Hero — Status do Voo */}
             <FlightStatusHero 
               status={status.status} 
               riskScore={status.risk_score}
@@ -207,13 +219,14 @@ export default function Home() {
 
             {/* 2. Bússola */}
             {status.wind_direction !== undefined && (
-              <div className="flex justify-center items-center w-full max-w-md mx-auto mt-8">
+              <div className="flex justify-center items-center w-full max-w-md mx-auto">
                 <WindCompass 
                   degrees={status.wind_direction} 
                   speed={status.wind_speed} 
                   gust={status.wind_gust} 
                   label={directionLabel(status.wind_direction)}
                   trend={windTrend}
+                  trendIntensity={trendIntensity}
                 />
               </div>
             )}
@@ -221,32 +234,23 @@ export default function Home() {
             {/* 3. Alertas Críticos */}
             <AlertsPanel reasons={status.reasons} />
 
-            {/* 4. Mapa Operacional */}
-            <div className="w-full mt-8 space-y-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 dark:text-zinc-500 text-center">
-                Mapa Operacional
+            {/* 4. Mapa Operacional + Windy (toggle dentro do componente) */}
+            <div className="w-full">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-center mb-4 opacity-40">
+                Visualização Geográfica
               </h3>
               <WeatherMap 
                 windSpeed={status.wind_speed} 
                 windGust={status.wind_gust} 
                 windDirectionLabel={status.wind_direction !== undefined ? directionLabel(status.wind_direction) : "N/A"}
                 windDirectionDegree={status.wind_direction}
-                precipitation={status.precipitation} 
+                precipitation={status.precipitation}
+                riskScore={status.risk_score}
               />
-              
-              {/* Windy Iframe (Opcional - Visual de Partículas) */}
-              <div className="w-full h-[400px] rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-lg">
-                <iframe 
-                  width="100%" 
-                  height="100%" 
-                  src="https://www.windy.com/?-23.28,-47.66,10" 
-                  frameBorder="0"
-                />
-              </div>
             </div>
 
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {/* 5. Métricas Detalhadas */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <MetricCard
                 icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/></svg>}
                 label="Vento (Pior Cenário)"
@@ -294,7 +298,7 @@ export default function Home() {
               )}
             </div>
 
-            {/* Technical Details (Collapsible) */}
+            {/* 6. Dados Técnicos (Colapsável) */}
             <TechnicalDetails status={status} />
           </>
         )}
