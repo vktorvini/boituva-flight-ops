@@ -16,7 +16,7 @@ import TechnicalDetails from "@/components/TechnicalDetails";
 import WindCompass from "@/components/WindCompass";
 import dynamic from "next/dynamic";
 
-const WeatherMap = dynamic(() => import("@/components/WeatherMap"), { ssr: false });
+const OperationalMap = dynamic(() => import("@/components/OperationalMap"), { ssr: false });
 
 // ── Theme Helpers ──────────────────────────────────────────────────────────────
 function applyTheme(theme: "dark" | "light") {
@@ -214,7 +214,9 @@ export default function Home() {
             <FlightStatusHero 
               status={status.status} 
               riskScore={status.risk_score}
-              mainReason={status.reasons[0]} 
+              mainReason={status.reasons[0]}
+              confidence={status.confidence}
+              sourceCount={status.source_count}
             />
 
             {/* 2. Bússola */}
@@ -239,13 +241,14 @@ export default function Home() {
               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-center mb-4 opacity-40">
                 Visualização Geográfica
               </h3>
-              <WeatherMap 
+              <OperationalMap 
                 windSpeed={status.wind_speed} 
                 windGust={status.wind_gust} 
                 windDirectionLabel={status.wind_direction !== undefined ? directionLabel(status.wind_direction) : "N/A"}
                 windDirectionDegree={status.wind_direction}
                 precipitation={status.precipitation}
                 riskScore={status.risk_score}
+                status={status.status}
               />
             </div>
 

@@ -357,11 +357,14 @@ async def fetch_and_store_weather() -> None:
             from app.agents.wind_direction_agent import degrees_to_cardinal
             sources_dict = {}
             for s in sources:
+                # Encontrar o SourceResult correspondente
+                sr_match = next((r for r in consensus.per_source_results if r.source_name == s.source_name), None)
                 sources_dict[s.source_name] = {
                     "available": s.available,
                     "wind_kmh": s.wind_speed,
                     "gust_kmh": s.wind_gust,
                     "rain_mm": s.precipitation,
+                    "is_safe": sr_match.is_safe if sr_match else True,
                 }
             
             payload = {
@@ -369,7 +372,12 @@ async def fetch_and_store_weather() -> None:
                 "wind_speed": consensus.wind_speed,
                 "wind_gust": consensus.wind_gust,
                 "direction": degrees_to_cardinal(raw.wind_direction) if raw.wind_direction is not None else "N/A",
-                "sources": sources_dict
+                "confidence": consensus.confidence_score,
+                "safe_sources": consensus.safe_sources,
+                "unsafe_sources": consensus.unsafe_sources,
+                "total_sources": consensus.source_count,
+                "any_unsafe": consensus.any_unsafe,
+                "sources": sources_dict,
             }
             
             history = FlightHistorySupabase(
@@ -379,7 +387,7 @@ async def fetch_and_store_weather() -> None:
                 wind_gust=consensus.wind_gust,
                 wind_direction=raw.wind_direction,
                 precipitation=consensus.precipitation,
-                confidence=status_record.confidence or 0.0,
+                confidence=consensus.confidence_score,
                 variance=normalized.variance or 0.0,
                 sources_json=payload,
             )
