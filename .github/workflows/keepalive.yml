@@ -3,7 +3,7 @@ name: keepalive
 on:
   schedule:
     # A cada 10 minutos, fora dos minutos cheios para reduzir atrasos do cron.
-    - cron: "3,13,23,33,43,53 * * * *"
+    - cron: "7,17,27,37,47,57 * * * *"
   workflow_dispatch:
 
 jobs:
