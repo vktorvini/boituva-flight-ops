@@ -1,11 +1,38 @@
 name: keepalive
+
 on:
   schedule:
-    - cron: "*/10 * * * *"   # a cada 10 minutos (UTC)
+    # A cada 10 minutos, fora dos minutos cheios para reduzir atrasos do cron.
+    - cron: "3,13,23,33,43,53 * * * *"
   workflow_dispatch:
+
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
-      - name: Chamar o backend
-        run: curl --fail --silent --show-error --retry 3 --retry-delay 10 --max-time 90 "${{ secrets.HEALTH_URL }}"
+      - name: Validar URL do backend
+        env:
+          HEALTH_URL: ${{ secrets.HEALTH_URL }}
+        run: |
+          if [ -z "$HEALTH_URL" ]; then
+            echo "::error::Configure o secret HEALTH_URL com a URL completa do endpoint /health do backend Render."
+            exit 1
+          fi
+
+      - name: Manter o backend ativo
+        env:
+          HEALTH_URL: ${{ secrets.HEALTH_URL }}
+        run: |
+          echo "Consultando o backend Render..."
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --retry 3 \
+            --retry-all-errors \
+            --retry-delay 10 \
+            --max-time 90 \
+            --output /dev/null \
+            --write-out "HTTP %{http_code} | duração: %{time_total}s\n" \
+            "$HEALTH_URL"
