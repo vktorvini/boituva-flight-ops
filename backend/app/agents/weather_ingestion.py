@@ -354,7 +354,7 @@ async def fetch_and_store_weather() -> None:
 
         # 4. FlightHistorySupabase (análise histórica)
         try:
-            from app.agents.wind_direction_agent import degrees_to_cardinal
+            from app.agents.wind_direction_agent import get_wind_direction_data
             sources_dict = {}
             for s in sources:
                 # Encontrar o SourceResult correspondente
@@ -371,7 +371,11 @@ async def fetch_and_store_weather() -> None:
                 "flag": status_record.status,
                 "wind_speed": consensus.wind_speed,
                 "wind_gust": consensus.wind_gust,
-                "direction": degrees_to_cardinal(raw.wind_direction) if raw.wind_direction is not None else "N/A",
+                "direction": (
+                            get_wind_direction_data(raw.wind_direction)["cardinal"]
+                            if raw.wind_direction is not None
+                            else "N/A"
+                        ),
                 "confidence": consensus.confidence_score,
                 "safe_sources": consensus.safe_sources,
                 "unsafe_sources": consensus.unsafe_sources,
